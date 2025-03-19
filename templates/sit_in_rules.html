@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Sit-in Rules{% endblock %}
+
+{% block content %}
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        display: flex;
+        background: #f0f2f5;
+    }
+    .sidebar {
+        height: 100%;
+        width: 250px;
+        position: fixed;
+        top: 80px; /* Account for fixed header */
+        left: -250px;
+        background-color: #fff;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        transition: 0.3s;
+        z-index: 1020;
+        padding-top: 20px;
+    }
+    .sidebar.active {
+        left: 0;
+    }
+    .sidebar a {
+        padding: 12px 25px;
+        display: block;
+        color: #050505;
+        text-decoration: none;
+        transition: 0.3s;
+        font-size: 14px;
+        margin: 5px 15px;
+        border-radius: 8px;
+    }
+    .sidebar a:hover {
+        background: #f0f2f5;
+        color: #0d6efd;
+    }
+    .sidebar a i {
+        width: 20px;
+        margin-right: 10px;
+    }
+    .sidebar .btn-danger {
+        margin: 15px 25px;
+        text-align: center;
+    }
+    .sidebar .btn-danger:hover {
+        background-color: #dc3545;
+        color: white;
+    }
+    .content {
+        margin-left: 60px;
+        padding: 20px;
+        display: flex;
+        gap: 20px;
+    }
+    .hamburger-btn {
+        position: fixed;
+        left: 20px;
+        top: 90px;
+        z-index: 1025;
+        background: #fff;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-radius: 5px;
+        padding: 10px;
+        cursor: pointer;
+    }
+    .table th, .table td {
+        text-align: left;
+        padding: 12px;
+        border-bottom: 1px solid #e4e6eb;
+    }
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+    h2 {
+        color: #050505;
+        font-size: 20px;
+        margin-bottom: 15px;
+    }
+    .btn-danger {
+        background-color: #ff4444;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 20px;
+        color: white;
+        font-size: 14px;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+    .btn-danger:hover {
+        background-color: #cc0000;
+    }
+    .text-center {
+        text-align: center;
+    }
+    .text-danger {
+        color: #ff4444;
+    }
+    ul {
+        list-style-type: none;
+        padding: 0;
+    }
+    ul li {
+        padding: 10px 0;
+        border-bottom: 1px solid #e4e6eb;
+    }
+    ul li:last-child {
+        border-bottom: none;
+    }
+    .main-content {
+        flex: 1;
+    }
+    .right-sidebar {
+        width: 300px;
+    }
+</style>
+
+<!-- Hamburger Button -->
+<button class="hamburger-btn" onclick="toggleSidebar()">
+    <i class="fas fa-bars"></i>
+</button>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+    <a href="{{ url_for('student_dashboard') }}"><i class="fas fa-home"></i> Home</a>
+    <a href="{{ url_for('edit_student_record') }}"><i class="fas fa-edit"></i> Edit Profile</a>
+    <a href="{{ url_for('sit_in_rules') }}"><i class="fas fa-clipboard-list"></i> Sit-in Rules</a>
+    <a href="{{ url_for('lab_rules') }}"><i class="fas fa-exclamation-circle"></i> Lab Rules & Regulations</a>
+    <a href="{{ url_for('sit_in_history') }}"><i class="fas fa-history"></i> Sit-in History</a>
+    <a href="{{ url_for('make_reservation') }}"><i class="fas fa-calendar-plus"></i> Reservation</a>
+    <a href="#" onclick="logoutSitIn()"><i class="fas fa-sign-out-alt"></i> End Session</a>
+    <a href="{{ url_for('logout') }}" class="btn btn-danger mt-3"><i class="fas fa-power-off"></i> Logout</a>
+</div>
+
+<div class="content" id="content">
+    <h1>Sit-in Rules</h1>
+    <ol>
+        <li>Students must register before attending a sit-in session.</li>
+        <li>Respect the lab environment and other students.</li>
+        <li>No food or drinks allowed inside the lab.</li>
+        <li>Attendance must be verified before leaving.</li>
+    </ol>
+</div>
+
+<script>
+    function toggleSidebar() {
+        let sidebar = document.getElementById("sidebar");
+        let content = document.getElementById("content");
+        if (sidebar.style.left === "0px") {
+            sidebar.style.left = "-250px";
+            content.style.marginLeft = "0";
+        } else {
+            sidebar.style.left = "0px";
+            content.style.marginLeft = "250px";
+        }
+    }
+</script>
+{% endblock %}

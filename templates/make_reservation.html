@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        display: flex;
+        background: #f0f2f5;
+    }
+    .sidebar {
+        height: 100%;
+        width: 250px;
+        position: fixed;
+        top: 80px; /* Account for fixed header */
+        left: -250px;
+        background-color: #fff;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        transition: 0.3s;
+        z-index: 1020;
+        padding-top: 20px;
+    }
+    .sidebar.active {
+        left: 0;
+    }
+    .sidebar a {
+        padding: 12px 25px;
+        display: block;
+        color: #050505;
+        text-decoration: none;
+        transition: 0.3s;
+        font-size: 14px;
+        margin: 5px 15px;
+        border-radius: 8px;
+    }
+    .sidebar a:hover {
+        background: #f0f2f5;
+        color: #0d6efd;
+    }
+    .sidebar a i {
+        width: 20px;
+        margin-right: 10px;
+    }
+    .sidebar .btn-danger {
+        margin: 15px 25px;
+        text-align: center;
+    }
+    .sidebar .btn-danger:hover {
+        background-color: #dc3545;
+        color: white;
+    }
+    .content {
+        margin-left: 60px;
+        padding: 20px;
+        display: flex;
+        gap: 20px;
+    }
+    .hamburger-btn {
+        position: fixed;
+        left: 20px;
+        top: 90px;
+        z-index: 1025;
+        background: #fff;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-radius: 5px;
+        padding: 10px;
+        cursor: pointer;
+    }
+    .table th, .table td {
+        text-align: left;
+        padding: 12px;
+        border-bottom: 1px solid #e4e6eb;
+    }
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+    h2 {
+        color: #050505;
+        font-size: 20px;
+        margin-bottom: 15px;
+    }
+    .btn-danger {
+        background-color: #ff4444;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 20px;
+        color: white;
+        font-size: 14px;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+    .btn-danger:hover {
+        background-color: #cc0000;
+    }
+    .text-center {
+        text-align: center;
+    }
+    .text-danger {
+        color: #ff4444;
+    }
+    ul {
+        list-style-type: none;
+        padding: 0;
+    }
+    ul li {
+        padding: 10px 0;
+        border-bottom: 1px solid #e4e6eb;
+    }
+    ul li:last-child {
+        border-bottom: none;
+    }
+    .main-content {
+        flex: 1;
+    }
+    .right-sidebar {
+        width: 300px;
+    }
+</style>
+
+<!-- Hamburger Button -->
+<button class="hamburger-btn" onclick="toggleSidebar()">
+    <i class="fas fa-bars"></i>
+</button>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+    <a href="{{ url_for('student_dashboard') }}"><i class="fas fa-home"></i> Home</a>
+    <a href="{{ url_for('edit_student_record') }}"><i class="fas fa-edit"></i> Edit Profile</a>
+    <a href="{{ url_for('sit_in_rules') }}"><i class="fas fa-clipboard-list"></i> Sit-in Rules</a>
+    <a href="{{ url_for('lab_rules') }}"><i class="fas fa-exclamation-circle"></i> Lab Rules & Regulations</a>
+    <a href="{{ url_for('sit_in_history') }}"><i class="fas fa-history"></i> Sit-in History</a>
+    <a href="{{ url_for('make_reservation') }}"><i class="fas fa-calendar-plus"></i> Reservation</a>
+    <a href="#" onclick="logoutSitIn()"><i class="fas fa-sign-out-alt"></i> End Session</a>
+    <a href="{{ url_for('logout') }}" class="btn btn-danger mt-3"><i class="fas fa-power-off"></i> Logout</a>
+</div>
+
+<div class="content" id="content">
+<div class="main-content">
+    <div class="card custom-card">
+        <div class="card-header">
+            <h2>Make Reservation</h2>
+        </div>
+        <div class="card-body">
+            <form id="reservationForm" method="POST">
+                <div class="mb-3">
+                    <label for="purpose" class="form-label">Purpose</label>
+                    <select class="form-control" id="purpose" name="purpose" required>
+                        <!-- Options populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="room" class="form-label">Room</label>
+                    <select class="form-control" id="room" name="room" required>
+                        <!-- Options populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="date" class="form-label">Date</label>
+                    <input type="date" class="form-control" id="date" name="date" required>
+                </div>
+                <div class="mb-3">
+                    <label for="time" class="form-label">Time</label>
+                    <input type="time" class="form-control" id="time" name="time" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Submit Reservation</button>
+            </form>
+        </div>
+    </div>
+</div>
+</div>
+
+<script>
+    function toggleSidebar() {
+        let sidebar = document.getElementById("sidebar");
+        sidebar.classList.toggle("active");
+    }
+
+    function logoutSitIn() {
+        if (!confirm('Are you sure you want to logout? You will need admin activation to login again.')) {
+            return;
+        }
+        
+        fetch('/student/logout_sitin', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error logging out');
+        });
+    }
+
+    // Form handling script
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load purposes
+        fetch('/get_programming_languages')
+            .then(response => response.json())
+            .then(data => {
+                const purposeSelect = document.getElementById('purpose');
+                purposeSelect.innerHTML = '<option value="">Select Purpose</option>';
+                data.languages.forEach(language => {
+                    const option = document.createElement('option');
+                    option.value = language;
+                    option.textContent = language;
+                    purposeSelect.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error loading purposes:', error));
+        
+        // Load rooms
+        fetch('/get_labs')
+            .then(response => response.json())
+            .then(data => {
+                const roomSelect = document.getElementById('room');
+                roomSelect.innerHTML = '<option value="">Select Room</option>';
+                data.labs.forEach(lab => {
+                    const option = document.createElement('option');
+                    option.value = lab.roomNumber;
+                    option.textContent = `${lab.roomNumber} (Capacity: ${lab.capacity})`;
+                    roomSelect.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error loading rooms:', error));
+        
+        // Handle form submission
+        document.getElementById('reservationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const purpose = document.getElementById('purpose').value;
+            const room = document.getElementById('room').value;
+            const date = document.getElementById('date').value;
+            const time = document.getElementById('time').value;
+            
+            if (!purpose || !room || !date || !time) {
+                alert('Please fill all fields');
+                return;
+            }
+            
+            // Create FormData object
+            const formData = new FormData();
+            formData.append('purpose', purpose);
+            formData.append('room', room);
+            formData.append('date', date);
+            formData.append('time', time);
+            
+            fetch('/student/make_reservation', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    this.reset();
+                    document.getElementById('date').min = new Date().toISOString().split('T')[0];
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error submitting reservation');
+            });
+        });
+        
+        document.getElementById('date').min = new Date().toISOString().split('T')[0];
+    });
+</script>
+{% endblock %}

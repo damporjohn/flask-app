@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        display: flex;
+        background: #f0f2f5;
+    }
+    .sidebar {
+        height: 100%;
+        width: 250px;
+        position: fixed;
+        top: 80px; /* Account for fixed header */
+        left: -250px;
+        background-color: #fff;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        transition: 0.3s;
+        z-index: 1020;
+        padding-top: 20px;
+    }
+    .sidebar.active {
+        left: 0;
+    }
+    .sidebar a {
+        padding: 12px 25px;
+        display: block;
+        color: #050505;
+        text-decoration: none;
+        transition: 0.3s;
+        font-size: 14px;
+        margin: 5px 15px;
+        border-radius: 8px;
+    }
+    .sidebar a:hover {
+        background: #f0f2f5;
+        color: #0d6efd;
+    }
+    .sidebar a i {
+        width: 20px;
+        margin-right: 10px;
+    }
+    .sidebar .btn-danger {
+        margin: 15px 25px;
+        text-align: center;
+    }
+    .sidebar .btn-danger:hover {
+        background-color: #dc3545;
+        color: white;
+    }
+    .content {
+        margin-left: 60px;
+        padding: 20px;
+        display: flex;
+        gap: 20px;
+    }
+    .hamburger-btn {
+        position: fixed;
+        left: 20px;
+        top: 90px;
+        z-index: 1025;
+        background: #fff;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-radius: 5px;
+        padding: 10px;
+        cursor: pointer;
+    }
+    .table th, .table td {
+        text-align: left;
+        padding: 12px;
+        border-bottom: 1px solid #e4e6eb;
+    }
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+    h2 {
+        color: #050505;
+        font-size: 20px;
+        margin-bottom: 15px;
+    }
+    .btn-danger {
+        background-color: #ff4444;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 20px;
+        color: white;
+        font-size: 14px;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+    .btn-danger:hover {
+        background-color: #cc0000;
+    }
+    .text-center {
+        text-align: center;
+    }
+    .text-danger {
+        color: #ff4444;
+    }
+    ul {
+        list-style-type: none;
+        padding: 0;
+    }
+    ul li {
+        padding: 10px 0;
+        border-bottom: 1px solid #e4e6eb;
+    }
+    ul li:last-child {
+        border-bottom: none;
+    }
+    .main-content {
+        flex: 1;
+    }
+    .right-sidebar {
+        width: 300px;
+    }
+</style>
+
+<!-- Hamburger Button -->
+<button class="hamburger-btn" onclick="toggleSidebar()">
+    <i class="fas fa-bars"></i>
+</button>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+    <a href="{{ url_for('student_dashboard') }}"><i class="fas fa-home"></i> Home</a>
+    <a href="{{ url_for('edit_student_record') }}"><i class="fas fa-edit"></i> Edit Profile</a>
+    <a href="{{ url_for('sit_in_rules') }}"><i class="fas fa-clipboard-list"></i> Sit-in Rules</a>
+    <a href="{{ url_for('lab_rules') }}"><i class="fas fa-exclamation-circle"></i> Lab Rules & Regulations</a>
+    <a href="{{ url_for('sit_in_history') }}"><i class="fas fa-history"></i> Sit-in History</a>
+    <a href="{{ url_for('make_reservation') }}"><i class="fas fa-calendar-plus"></i> Reservation</a>
+    <a href="#" onclick="logoutSitIn()"><i class="fas fa-sign-out-alt"></i> End Session</a>
+    <a href="{{ url_for('logout') }}" class="btn btn-danger mt-3"><i class="fas fa-power-off"></i> Logout</a>
+</div>
+
+<div class="content" id="content">
+    <div class="main-content">
+        <div class="card">
+            <h2 class="mb-3 text-center">Student Information</h2>
+            {% if student %}
+            <table class="table">
+                <tr><th>ID No:</th><td>{{ student.id }}</td></tr>
+                <tr><th>Username:</th><td>{{ student.username }}</td></tr>
+                <tr><th>Full Name:</th><td>{{ student.firstname }} {{ student.midname or '' }} {{ student.lastname }}</td></tr>
+                <tr><th>Course:</th><td>{{ student.course }}</td></tr>
+                <tr><th>Year Level:</th><td>{{ student.yearlevel }}</td></tr>
+                <tr><th>Email:</th><td>{{ student.email }}</td></tr>
+                <tr><th>Registration Date:</th><td>{{ student.registration_date }}</td></tr>
+                <tr><th>Remaining Sessions:</th><td>{{ student.remaining_sessions }}</td></tr>
+            </table>
+
+            <!-- Edit Button -->
+            <button class="btn btn-primary" onclick="openModal()">Edit</button>
+
+            {% else %}
+            <p class="text-center text-danger">No student data found.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Edit Student Record -->
+<div class="modal" id="editModal">
+    <div class="modal-content">
+        <div class="modal-header">Edit Student Record</div>
+        <hr>
+        {% if student %}
+        <form method="POST" action="{{ url_for('edit_student_record') }}">
+            <!-- Student ID (readonly) -->
+            <div class="mb-3">
+                <label for="id" class="form-label">Student ID</label>
+                <input type="text" class="form-control" id="student_id" name="student_id" value="{{ student.id }}" readonly>
+            </div>
+
+            <div class="row">
+                <!-- First Name -->
+                <div class="col-md-4">
+                    <label for="firstname" class="form-label">First Name</label>
+                    <input type="text" class="form-control" id="firstname" name="firstname" 
+                           value="{{ student.firstname or '' }}" required>
+                </div>
+
+                <!-- Middle Name -->
+                <div class="col-md-4">
+                    <label for="midname" class="form-label">Middle Name</label>
+                    <input type="text" class="form-control" id="midname" name="midname" 
+                           value="{{ student.midname or '' }}">
+                </div>
+
+                <!-- Last Name -->
+                <div class="col-md-4">
+                    <label for="lastname" class="form-label">Last Name</label>
+                    <input type="text" class="form-control" id="lastname" name="lastname" 
+                           value="{{ student.lastname or '' }}" required>
+                </div>
+            </div>
+
+            <!-- Email -->
+            <div class="mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" class="form-control" id="email" name="email" 
+                       value="{{ student.email or '' }}" required>
+            </div>
+                        <!-- Course Dropdown -->
+                        <div class="form-group">
+                            <label for="course">Course</label>
+                            <select name="course" class="form-control" required>
+                                <option value="" disabled selected>{{ student.course }}</option>
+                                <option value="BSCS">Bachelor of Science in Computer Science (BSCS)</option>
+                                <option value="BSIT">Bachelor of Science in Information Technology (BSIT)</option>
+                                <option value="BSIS">Bachelor of Science in Information Systems (BSIS)</option>
+                                <option value="BSECE">Bachelor of Science in Electronics Engineering (BSECE)</option>
+                                <option value="BSCE">Bachelor of Science in Civil Engineering (BSCE)</option>
+                                <option value="BSEE">Bachelor of Science in Electrical Engineering (BSEE)</option>
+                                <option value="BSA">Bachelor of Science in Accountancy (BSA)</option>
+                                <option value="BSBA">Bachelor of Science in Business Administration (BSBA)</option>
+                                <option value="BSN">Bachelor of Science in Nursing (BSN)</option>
+                                <option value="BSED">Bachelor of Secondary Education (BSED)</option>
+                            </select>
+                        </div>
+
+                        <!-- Year Level Dropdown -->
+                        <div class="form-group">
+                            <label for="yearlevel">{{ student.yearlevel }}</label>
+                            <select name="yearlevel" class="form-control" required>
+                                <option value="" disabled selected>Select your year level</option>
+                                <option value="1">1st Year</option>
+                                <option value="2">2nd Year</option>
+                                <option value="3">3rd Year</option>
+                                <option value="4">4th Year</option>
+                                <option value="5">5th Year</option>
+                            </select>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Update Record</button>
+                        </div>
+        </form>
+        {% else %}
+            <p class="text-center text-danger">Student record not found.</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    function toggleSidebar() {
+        let sidebar = document.getElementById("sidebar");
+        let content = document.getElementById("content");
+        if (sidebar.style.left === "0px") {
+            sidebar.style.left = "-250px";
+            content.style.marginLeft = "0";
+        } else {
+            sidebar.style.left = "0px";
+            content.style.marginLeft = "250px";
+        }
+    }
+
+    function openModal() {
+        document.getElementById("editModal").style.display = "flex";
+    }
+
+    function closeModal() {
+        document.getElementById("editModal").style.display = "none";
+    }
+</script>
+{% endblock %}

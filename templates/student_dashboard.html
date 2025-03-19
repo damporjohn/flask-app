@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        display: flex;
+        background: #f0f2f5;
+    }
+    .sidebar {
+        height: 100%;
+        width: 250px;
+        position: fixed;
+        top: 80px; /* Account for fixed header */
+        left: -250px;
+        background-color: #fff;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        transition: 0.3s;
+        z-index: 1020;
+        padding-top: 20px;
+    }
+    .sidebar.active {
+        left: 0;
+    }
+    .sidebar a {
+        padding: 12px 25px;
+        display: block;
+        color: #050505;
+        text-decoration: none;
+        transition: 0.3s;
+        font-size: 14px;
+        margin: 5px 15px;
+        border-radius: 8px;
+    }
+    .sidebar a:hover {
+        background: #f0f2f5;
+        color: #0d6efd;
+    }
+    .sidebar a i {
+        width: 20px;
+        margin-right: 10px;
+    }
+    .sidebar .btn-danger {
+        margin: 15px 25px;
+        text-align: center;
+    }
+    .sidebar .btn-danger:hover {
+        background-color: #dc3545;
+        color: white;
+    }
+    .content {
+        margin-left: 60px;
+        padding: 20px;
+        display: flex;
+        gap: 20px;
+    }
+    .hamburger-btn {
+        position: fixed;
+        left: 20px;
+        top: 90px;
+        z-index: 1025;
+        background: #fff;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-radius: 5px;
+        padding: 10px;
+        cursor: pointer;
+    }
+    .table th, .table td {
+        text-align: left;
+        padding: 12px;
+        border-bottom: 1px solid #e4e6eb;
+    }
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+    h2 {
+        color: #050505;
+        font-size: 20px;
+        margin-bottom: 15px;
+    }
+    .btn-danger {
+        background-color: #ff4444;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 20px;
+        color: white;
+        font-size: 14px;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+    .btn-danger:hover {
+        background-color: #cc0000;
+    }
+    .text-center {
+        text-align: center;
+    }
+    .text-danger {
+        color: #ff4444;
+    }
+    ul {
+        list-style-type: none;
+        padding: 0;
+    }
+    ul li {
+        padding: 10px 0;
+        border-bottom: 1px solid #e4e6eb;
+    }
+    ul li:last-child {
+        border-bottom: none;
+    }
+    .main-content {
+        flex: 1;
+    }
+    .right-sidebar {
+        width: 300px;
+    }
+</style>
+
+<!-- Hamburger Button -->
+<button class="hamburger-btn" onclick="toggleSidebar()">
+    <i class="fas fa-bars"></i>
+</button>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+    <a href="{{ url_for('student_dashboard') }}"><i class="fas fa-home"></i> Home</a>
+    <a href="{{ url_for('edit_student_record') }}"><i class="fas fa-edit"></i> Edit Profile</a>
+    <a href="{{ url_for('sit_in_rules') }}"><i class="fas fa-clipboard-list"></i> Sit-in Rules</a>
+    <a href="{{ url_for('lab_rules') }}"><i class="fas fa-exclamation-circle"></i> Lab Rules & Regulations</a>
+    <a href="{{ url_for('sit_in_history') }}"><i class="fas fa-history"></i> Sit-in History</a>
+    <a href="{{ url_for('make_reservation') }}"><i class="fas fa-calendar-plus"></i> Reservation</a>
+    <a href="#" onclick="logoutSitIn()"><i class="fas fa-sign-out-alt"></i> End Session</a>
+    <a href="{{ url_for('logout') }}" class="btn btn-danger mt-3"><i class="fas fa-power-off"></i> Logout</a>
+</div>
+
+<div class="content" id="content">
+    <!-- Main Content (Left Side) -->
+    <div class="main-content">
+        <div class="card custom-card">
+            <div class="card-header">
+                <h2 class="mb-3 text-center">Student Information</h2>
+            </div>
+            <div class="card-body">
+                {% if student %}
+                <table class="table custom-table">
+                    <tr><th>ID No:</th><td>{{ student.id }}</td></tr>
+                    <tr><th>Username:</th><td>{{ student.username }}</td></tr>
+                    <tr><th>Full Name:</th><td>{{ student.firstname }} {{ student.midname or '' }} {{ student.lastname }}</td></tr>
+                    <tr><th>Course:</th><td>{{ student.course }}</td></tr>
+                    <tr><th>Year Level:</th><td>{{ student.yearlevel }}</td></tr>
+                    <tr><th>Email:</th><td>{{ student.email }}</td></tr>
+                    <tr><th>Registration Date:</th><td>{{ student.registration_date }}</td></tr>
+                    <tr><th>Remaining Sessions:</th><td>{{ student.remaining_sessions }}</td></tr>
+                </table>
+                {% else %}
+                <p class="text-center text-danger">No student data found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Sidebar (Announcements and Remaining Sessions) -->
+    <div class="right-sidebar">
+        <div class="card">
+            <h2>Announcements</h2>
+            <div id="announcementsList">
+                <p class="text-center text-muted">Loading announcements...</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Remaining Sessions</h2>
+            <p>Your remaining sit-in sessions: {{ student.remaining_sessions }}</p>
+        </div>
+    </div>
+</div>
+
+<!-- Activation Status Modal -->
+{% if session.get('needs_activation') %}
+<div class="modal fade" id="activationModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">Activation Required</h5>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <i class="fas fa-exclamation-triangle text-warning fa-4x"></i>
+                </div>
+                <p>Your account needs to be activated by an administrator before you can access the system.</p>
+                <p>Please contact the lab administrator to activate a session for you using the Sit-In Form.</p>
+            </div>
+            <div class="modal-footer">
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Login Success Modal -->
+{% if session.get('needs_login') %}
+<div class="modal fade" id="loginSuccessModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Login Successful</h5>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <i class="fas fa-check-circle text-success fa-4x"></i>
+                </div>
+                <p>Logged in as: <strong>{{ session.firstname }} {{ session.lastname }} ({{ session.user_id }})</strong></p>
+                <p>Purpose: <strong>{{ session.activation_purpose }}</strong></p>
+                <p>Room Number: <strong>{{ session.activation_room }}</strong></p>
+                <p>Please remember to log out when you finish your session.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="acknowledgeLogin()">Proceed</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+    /* eslint-disable */
+    function toggleSidebar() {
+        let sidebar = document.getElementById("sidebar");
+        sidebar.classList.toggle("active");
+    }
+
+    function loadAnnouncements() {
+        fetch("/get_announcements")
+            .then(response => response.json())
+            .then(data => {
+                const announcementsList = document.getElementById("announcementsList");
+                if (data.announcements && data.announcements.length > 0) {
+                    announcementsList.innerHTML = data.announcements.map(announcement => `
+                        <div class="announcement-item p-3 border-bottom">
+                            <h5>${announcement.title}</h5>
+                            <p>${announcement.content}</p>
+                            <small class="text-muted">Posted: ${new Date(announcement.created_at).toLocaleString()}</small>
+                        </div>
+                    `).join('');
+                } else {
+                    announcementsList.innerHTML = '<p class="text-center text-muted">No announcements available.</p>';
+                }
+            })
+            .catch(error => {
+                console.error("Error loading announcements:", error);
+                announcementsList.innerHTML = '<p class="text-center text-danger">Error loading announcements.</p>';
+            });
+    }
+
+    // Load announcements when page loads
+    document.addEventListener('DOMContentLoaded', loadAnnouncements);
+
+    // Show the appropriate modal on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set variables from Jinja2 context
+        const needsActivation = {% if session.get('needs_activation') %}true{% else %}false{% endif %};
+        const needsLogin = {% if session.get('needs_login') %}true{% else %}false{% endif %};
+        
+        if (needsActivation) {
+            var activationModal = new bootstrap.Modal(document.getElementById('activationModal'));
+            activationModal.show();
+            // Disable other interactions when activation is needed
+            document.querySelectorAll('button, a').forEach(element => {
+                if (!element.classList.contains('btn-secondary')) {
+                    element.disabled = true;
+                    element.style.pointerEvents = 'none';
+                }
+            });
+        }
+        
+        if (needsLogin) {
+            var loginModal = new bootstrap.Modal(document.getElementById('loginSuccessModal'));
+            loginModal.show();
+        }
+    });
+
+    // Function to acknowledge login and clear the session flag
+    function acknowledgeLogin() {
+        fetch('/student/acknowledge_login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                var loginModal = bootstrap.Modal.getInstance(document.getElementById('loginSuccessModal'));
+                loginModal.hide();
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    // Check if session was ended by admin
+    function checkSessionStatus() {
+        fetch('/student/check_session_status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.ended) {
+                    alert('Your session has been ended by an administrator');
+                    window.location.href = '/logout';
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    // Check session status every 30 seconds
+    setInterval(checkSessionStatus, 30000);
+
+    // Function to handle sit-in logout
+    function logoutSitIn() {
+        if (!confirm('Are you sure you want to logout? You will need admin activation to login again.')) {
+            return;
+        }
+
+        fetch('/student/logout_sitin', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error logging out');
+        });
+    }
+</script>
+{% endblock %}

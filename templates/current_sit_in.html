@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <!-- Header with Back Button -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+        <h2>Current Sit-In Sessions</h2>
+        <div>
+            <span class="badge bg-primary">Total Active: {{ total }}</span>
+        </div>
+    </div>
+
+    <!-- Results Table -->
+    <div class="card custom-card">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs" id="sessionTabs">
+                <li class="nav-item">
+                    <a class="nav-link active" id="active-tab" data-bs-toggle="tab" href="#active-sessions">Active Sessions</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="reservations-tab" data-bs-toggle="tab" href="#pending-reservations">Reservations</a>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body">
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="active-sessions">
+                    <div class="table-responsive">
+                        <table class="table custom-table">
+                            <thead>
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>Name</th>
+                                    <th>Course</th>
+                                    <th>Room</th>
+                                    <th>Purpose</th>
+                                    <th>Login Time</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if sit_ins %}
+                                    {% for sit_in in sit_ins %}
+                                    <tr>
+                                        <td>{{ sit_in.student_id }}</td>
+                                        <td>{{ sit_in.firstname }} {{ sit_in.lastname }}</td>
+                                        <td>{{ sit_in.course }}</td>
+                                        <td>{{ sit_in.room_number }}</td>
+                                        <td>{{ sit_in.purpose }}</td>
+                                        <td>{{ sit_in.login_time }}</td>
+                                        <td>
+                                            {% if sit_in.login_time %}
+                                                <span class="badge bg-success">Active</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">Pending Login</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-danger btn-sm" 
+                                                    onclick="endSession('{{ sit_in.sit_in_id }}')">
+                                                <i class="fas fa-sign-out-alt"></i> End Session
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="8" class="text-center">No active sit-in sessions found.</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="pending-reservations">
+                    <div class="table-responsive">
+                        <table class="table custom-table">
+                            <thead>
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>Name</th>
+                                    <th>Purpose</th>
+                                    <th>Room</th>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pendingReservationsTable">
+                                <tr>
+                                    <td colspan="8" class="text-center">Loading reservations...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sit-In Form Modal -->
+<div class="modal fade" id="sitInFormModal" tabindex="-1" aria-labelledby="sitInFormModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="sitInFormModalLabel">Activate Student Session</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="sitInForm">
+                    <div class="mb-3">
+                        <label for="student_id" class="form-label">Student ID</label>
+                        <input type="text" class="form-control" id="student_id" name="student_id" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="purpose" class="form-label">Purpose</label>
+                        <select class="form-control" id="purpose" name="purpose" required>
+                            <option value="">Select Purpose</option>
+                            {% for language in programming_languages %}
+                                <option value="{{ language }}">{{ language }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="roomNumber" class="form-label">Room Number</label>
+                        <select class="form-control" id="roomNumber" name="roomNumber" required>
+                            <option value="">Select Room</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Activate Session</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load pending reservations when the tab is shown
+document.getElementById('reservations-tab').addEventListener('click', loadPendingReservations);
+
+// Load reservations on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Load active sessions by default
+    // If the reservations tab is active, load reservations
+    if (document.querySelector('#reservations-tab.active')) {
+        loadPendingReservations();
+    }
+});
+
+// Function to load pending reservations
+function loadPendingReservations() {
+    fetch('/admin/get_reservations')
+        .then(response => response.json())
+        .then(data => {
+            const tableBody = document.getElementById('pendingReservationsTable');
+            
+            if (!data.reservations || data.reservations.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="8" class="text-center">No reservations found</td></tr>';
+                return;
+            }
+            
+            tableBody.innerHTML = data.reservations.map(reservation => `
+                <tr>
+                    <td>${reservation.student_id}</td>
+                    <td>${reservation.firstname} ${reservation.lastname}</td>
+                    <td>${reservation.purpose}</td>
+                    <td>${reservation.room_number}</td>
+                    <td>${reservation.requested_date}</td>
+                    <td>${reservation.requested_time}</td>
+                    <td>
+                        <span class="badge ${reservation.status === 'pending' ? 'bg-warning' : 'bg-success'}">
+                            ${reservation.status}
+                        </span>
+                    </td>
+                    <td>
+                        ${reservation.status === 'pending' ? `
+                        <button class="btn btn-sm btn-success" onclick="approveReservation(${reservation.id})">
+                            <i class="fas fa-check"></i> Approve
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="disapproveReservation(${reservation.id})">
+                            <i class="fas fa-times"></i> Disapprove
+                        </button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('pendingReservationsTable').innerHTML = 
+                '<tr><td colspan="8" class="text-center text-danger">Error loading reservations</td></tr>';
+        });
+}
+
+// Function to approve a reservation
+function approveReservation(reservationId) {
+    if (!confirm('Are you sure you want to approve this reservation?')) {
+        return;
+    }
+    
+    fetch(`/admin/handle_reservation/${reservationId}/approve`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Reservation approved successfully');
+            loadPendingReservations();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error approving reservation');
+    });
+}
+
+// Function to disapprove a reservation
+function disapproveReservation(reservationId) {
+    if (!confirm('Are you sure you want to disapprove this reservation?')) {
+        return;
+    }
+    
+    fetch(`/admin/handle_reservation/${reservationId}/reject`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Reservation disapproved successfully');
+            loadPendingReservations();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error disapproving reservation');
+    });
+}
+
+// Existing endSession function
+function endSession(sitInId) {
+    if (!confirm('Are you sure you want to end this student\'s session? This will log them out.')) {
+        return;
+    }
+    
+    fetch('/end_sit_in_session/' + sitInId, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error ending session');
+    });
+}
+
+// Load available rooms when the Sit-In Form modal is opened
+document.getElementById('sitInFormModal').addEventListener('show.bs.modal', function () {
+    fetch('/get_labs')
+        .then(response => response.json())
+        .then(data => {
+            const roomSelect = document.getElementById('roomNumber');
+            roomSelect.innerHTML = '<option value="">Select Room</option>';
+            data.labs.forEach(lab => {
+                roomSelect.innerHTML += `<option value="${lab.roomNumber}">${lab.roomNumber} (Capacity: ${lab.capacity})</option>`;
+            });
+        })
+        .catch(error => console.error('Error loading rooms:', error));
+});
+
+// Handle Sit-In Form submission
+document.getElementById('sitInForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('/submit_sit_in_form', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.success);
+            location.reload();  // Reload to show new activation
+        } else {
+            alert(data.error || 'Error activating session');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error submitting form');
+    });
+});
+</script>
+{% endblock %} 
