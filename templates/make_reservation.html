@@ -146,17 +146,31 @@
             <h2>Make Reservation</h2>
         </div>
         <div class="card-body">
-            <form id="reservationForm" method="POST">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <form id="reservationForm" method="POST" action="{{ url_for('make_reservation') }}">
                 <div class="mb-3">
                     <label for="purpose" class="form-label">Purpose</label>
                     <select class="form-control" id="purpose" name="purpose" required>
-                        <!-- Options populated by JavaScript -->
+                        <option value="">Select Purpose</option>
+                        {% for lang in programming_languages %}
+                            <option value="{{ lang }}">{{ lang }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <div class="mb-3">
                     <label for="room" class="form-label">Room</label>
                     <select class="form-control" id="room" name="room" required>
-                        <!-- Options populated by JavaScript -->
+                        <option value="">Select Room</option>
+                        {% for lab in labs %}
+                            <option value="{{ lab.id }}">Room {{ lab.roomNumber }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <div class="mb-3">
@@ -206,80 +220,32 @@
         });
     }
 
-    // Form handling script
     document.addEventListener('DOMContentLoaded', function() {
-        // Load purposes
-        fetch('/get_programming_languages')
-            .then(response => response.json())
-            .then(data => {
-                const purposeSelect = document.getElementById('purpose');
-                purposeSelect.innerHTML = '<option value="">Select Purpose</option>';
-                data.languages.forEach(language => {
-                    const option = document.createElement('option');
-                    option.value = language;
-                    option.textContent = language;
-                    purposeSelect.appendChild(option);
-                });
-            })
-            .catch(error => console.error('Error loading purposes:', error));
-        
-        // Load rooms
-        fetch('/get_labs')
-            .then(response => response.json())
-            .then(data => {
-                const roomSelect = document.getElementById('room');
-                roomSelect.innerHTML = '<option value="">Select Room</option>';
-                data.labs.forEach(lab => {
-                    const option = document.createElement('option');
-                    option.value = lab.roomNumber;
-                    option.textContent = `${lab.roomNumber} (Capacity: ${lab.capacity})`;
-                    roomSelect.appendChild(option);
-                });
-            })
-            .catch(error => console.error('Error loading rooms:', error));
+        // Set minimum date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('date').min = today;
         
         // Handle form submission
-        document.getElementById('reservationForm').addEventListener('submit', function(e) {
-            e.preventDefault();
+        const form = document.getElementById('reservationForm');
+        form.onsubmit = function(e) {
+            // Remove the preventDefault to allow normal form submission
+            const formData = new FormData(form);
             
-            const purpose = document.getElementById('purpose').value;
-            const room = document.getElementById('room').value;
-            const date = document.getElementById('date').value;
-            const time = document.getElementById('time').value;
+            // Validate form data
+            const purpose = formData.get('purpose');
+            const room = formData.get('room');
+            const date = formData.get('date');
+            const time = formData.get('time');
             
             if (!purpose || !room || !date || !time) {
-                alert('Please fill all fields');
-                return;
+                alert('Please fill in all fields');
+                e.preventDefault();
+                return false;
             }
             
-            // Create FormData object
-            const formData = new FormData();
-            formData.append('purpose', purpose);
-            formData.append('room', room);
-            formData.append('date', date);
-            formData.append('time', time);
-            
-            fetch('/student/make_reservation', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert(data.message);
-                    this.reset();
-                    document.getElementById('date').min = new Date().toISOString().split('T')[0];
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error submitting reservation');
-            });
-        });
-        
-        document.getElementById('date').min = new Date().toISOString().split('T')[0];
+            // Allow the form to submit normally
+            return true;
+        };
     });
 </script>
 {% endblock %}

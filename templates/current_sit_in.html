@@ -39,28 +39,18 @@
                                     <th>Course</th>
                                     <th>Room</th>
                                     <th>Purpose</th>
-                                    <th>Login Time</th>
-                                    <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% if sit_ins %}
                                     {% for sit_in in sit_ins %}
-                                    <tr>
+                                    <tr data-sit-in-id="{{ sit_in.sit_in_id }}">
                                         <td>{{ sit_in.student_id }}</td>
                                         <td>{{ sit_in.firstname }} {{ sit_in.lastname }}</td>
                                         <td>{{ sit_in.course }}</td>
                                         <td>{{ sit_in.room_number }}</td>
                                         <td>{{ sit_in.purpose }}</td>
-                                        <td>{{ sit_in.login_time }}</td>
-                                        <td>
-                                            {% if sit_in.login_time %}
-                                                <span class="badge bg-success">Active</span>
-                                            {% else %}
-                                                <span class="badge bg-warning">Pending Login</span>
-                                            {% endif %}
-                                        </td>
                                         <td>
                                             <button class="btn btn-danger btn-sm" 
                                                     onclick="endSession('{{ sit_in.sit_in_id }}')">
@@ -121,13 +111,13 @@
                         <input type="text" class="form-control" id="student_id" name="student_id" required>
                     </div>
                     <div class="mb-3">
-                        <label for="purpose" class="form-label">Purpose</label>
-                        <select class="form-control" id="purpose" name="purpose" required>
-                            <option value="">Select Purpose</option>
+                        <label for="purpose" class="form-label">Purpose (Programming Languages)</label>
+                        <select class="form-control" id="purpose" name="purpose" multiple required>
                             {% for language in programming_languages %}
                                 <option value="{{ language }}">{{ language }}</option>
                             {% endfor %}
                         </select>
+                        <small class="text-muted">Hold Ctrl/Cmd to select multiple languages</small>
                     </div>
                     <div class="mb-3">
                         <label for="roomNumber" class="form-label">Room Number</label>
@@ -135,7 +125,9 @@
                             <option value="">Select Room</option>
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-primary">Activate Session</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-play"></i> Activate Session
+                    </button>
                 </form>
             </div>
         </div>
@@ -162,13 +154,16 @@ function loadPendingReservations() {
         .then(data => {
             const tableBody = document.getElementById('pendingReservationsTable');
             
-            if (!data.reservations || data.reservations.length === 0) {
+            // Filter out used reservations
+            const activeReservations = data.reservations ? data.reservations.filter(r => !r.used) : [];
+            
+            if (!activeReservations || activeReservations.length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="8" class="text-center">No reservations found</td></tr>';
                 return;
             }
             
-            tableBody.innerHTML = data.reservations.map(reservation => `
-                <tr>
+            tableBody.innerHTML = activeReservations.map(reservation => `
+                <tr data-reservation-id="${reservation.id}">
                     <td>${reservation.student_id}</td>
                     <td>${reservation.firstname} ${reservation.lastname}</td>
                     <td>${reservation.purpose}</td>
@@ -188,7 +183,11 @@ function loadPendingReservations() {
                         <button class="btn btn-sm btn-danger" onclick="disapproveReservation(${reservation.id})">
                             <i class="fas fa-times"></i> Disapprove
                         </button>
-                        ` : ''}
+                        ` : `
+                        <button class="btn btn-sm btn-primary" onclick="activateSession(${reservation.id})">
+                            <i class="fas fa-play"></i> Activate Session
+                        </button>
+                        `}
                     </td>
                 </tr>
             `).join('');
@@ -254,9 +253,52 @@ function disapproveReservation(reservationId) {
     });
 }
 
-// Existing endSession function
+// Function to activate session from reservation
+function activateSession(reservationId) {
+    if (!confirm('Are you sure you want to activate this session?')) {
+        return;
+    }
+    
+    // First get the reservation details from the table row
+    const row = document.querySelector(`tr[data-reservation-id="${reservationId}"]`);
+    const formData = new FormData();
+    formData.append('student_id', row.cells[0].textContent); // Student ID from first column
+    formData.append('purpose', row.cells[2].textContent); // Purpose from third column
+    formData.append('room_number', row.cells[3].textContent); // Room from fourth column
+    formData.append('reservation_id', reservationId); // Add reservation ID
+    
+    fetch('/admin/activate_sitin', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove the row from the table
+            row.remove();
+            
+            // Check if table is empty and show message if needed
+            const tableBody = document.getElementById('pendingReservationsTable');
+            if (tableBody.children.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="8" class="text-center">No reservations found</td></tr>';
+            }
+            
+            alert(data.message);
+            // Reload the active sessions tab
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error activating session');
+    });
+}
+
+// Function to end session
 function endSession(sitInId) {
-    if (!confirm('Are you sure you want to end this student\'s session? This will log them out.')) {
+    if (!confirm('Are you sure you want to end this student\'s session?')) {
         return;
     }
     
@@ -269,8 +311,17 @@ function endSession(sitInId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            // Find the row and update the button
+            const row = document.querySelector(`tr[data-sit-in-id="${sitInId}"]`);
+            if (row) {
+                const actionCell = row.querySelector('td:last-child');
+                actionCell.innerHTML = `
+                    <button class="btn btn-sm btn-secondary" disabled>
+                        <i class="fas fa-check-circle"></i> Session has ended
+                    </button>
+                `;
+            }
             alert(data.message);
-            location.reload();
         } else {
             alert('Error: ' + data.error);
         }
@@ -301,6 +352,14 @@ document.getElementById('sitInForm').addEventListener('submit', function(e) {
     
     const formData = new FormData(this);
     
+    // Get selected languages and join them with commas
+    const purposeSelect = document.getElementById('purpose');
+    const selectedLanguages = Array.from(purposeSelect.selectedOptions).map(opt => opt.value);
+    
+    // Remove the original purpose from formData and add the joined languages
+    formData.delete('purpose');
+    formData.append('purpose', selectedLanguages.join(','));
+    
     fetch('/submit_sit_in_form', {
         method: 'POST',
         body: formData
@@ -319,5 +378,41 @@ document.getElementById('sitInForm').addEventListener('submit', function(e) {
         alert('Error submitting form');
     });
 });
+
+function handleSearchResultClick(studentId, fullName) {
+    console.log("Clicked student:", studentId, fullName); // Add debugging
+    
+    // Set form values
+    document.getElementById('studentId').value = studentId;
+    document.getElementById('studentFullName').value = fullName;
+    
+    // Fetch remaining sessions
+    fetch(`/get_student_remaining_sessions/${studentId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.remaining_sessions !== undefined) {
+                document.getElementById('remainingSessions').value = data.remaining_sessions;
+            } else {
+                document.getElementById('remainingSessions').value = 'Error fetching sessions';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('remainingSessions').value = 'Error fetching sessions';
+        });
+    
+    // Close search modal if it's open
+    const searchModal = bootstrap.Modal.getInstance(document.getElementById('searchModal'));
+    if (searchModal) {
+        searchModal.hide();
+    }
+    
+    // Show the sit-in form modal
+    setTimeout(() => {
+        const sitInFormModal = new bootstrap.Modal(document.getElementById('sitInFormModal'));
+        sitInFormModal.show();
+    }, 500); // Add a small delay to ensure the search modal is fully closed
+}
+
 </script>
 {% endblock %} 

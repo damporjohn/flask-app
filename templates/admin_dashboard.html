@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 
+<!-- Add Chart.js library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 {% block content %}
 
 <style>
@@ -216,32 +219,8 @@
                             </div>
                         </div>
                     </div>
-
                     <!-- Right Sidebar -->
                     <div class="col-lg-4">
-                        <!-- Statistics Cards -->
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="mb-0">Quick Statistics</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row g-3">
-                                    <div class="col-6">
-                                        <div class="stat-card bg-primary bg-opacity-10 p-3 rounded">
-                                            <h3 id="totalStudents">0</h3>
-                                            <p>Total Students</p>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="stat-card bg-success bg-opacity-10 p-3 rounded">
-                                            <h3 id="activeSitins">0</h3>
-                                            <p>Active Sit-ins</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Announcements Section -->
                         <div class="card mb-4">
                             <div class="card-header d-flex justify-content-between align-items-center">
@@ -257,13 +236,38 @@
                             </div>
                         </div>
 
-                        <!-- Purpose Distribution Chart -->
-                        <div class="card">
+                        <!-- Quick Statistics Card -->
+                        <div class="card mb-4">
                             <div class="card-header">
-                                <h5 class="mb-0">Purpose Distribution</h5>
+                                <h5 class="mb-0">Quick Statistics</h5>
                             </div>
                             <div class="card-body">
-                                <canvas id="purposePieChart"></canvas>
+                                <div class="row g-3">
+                                    <div class="col-4">
+                                        <div class="stat-card bg-primary bg-opacity-10 p-3 rounded">
+                                            <h3 id="totalStudents">0</h3>
+                                            <p>Total Students Registered</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="stat-card bg-success bg-opacity-10 p-3 rounded">
+                                            <h3 id="activeSitins">0</h3>
+                                            <p>Active Sit-ins</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="stat-card bg-info bg-opacity-10 p-3 rounded">
+                                            <h3 id="totalSitins">0</h3>
+                                            <p>Total Sit-ins</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mt-4">
+                                        <h5>Programming Languages Distribution</h5>
+                                        <div style="height: 300px; position: relative;">
+                                            <canvas id="purposeChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -317,11 +321,15 @@
                         <small class="text-muted">Hold Ctrl/Cmd to select multiple languages</small>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Room Number:</label>
+                        <label class="form-label">Lab:</label>
                         <select id="roomDropdown" class="form-control" name="room_number" required>
-                            <option value="">Select a Room</option>
+                            <option value="">Select a Lab</option>
                         </select>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Remaining Sessions:</label>
+                        <input type="text" id="remainingSessions" class="form-control" readonly>
+                    </div>                    
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-user-check"></i> Activate Sit-in
                     </button>
@@ -358,7 +366,7 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    // Debug modal initialization
+    // Initialize modals and other functionality
     console.log("Initializing modals...");
     const searchModal = document.getElementById('searchModal');
     const sitInFormModal = document.getElementById('sitInFormModal');
@@ -374,8 +382,14 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
     
-    // Fetch rooms for dropdown
+    // Load initial data
     fetchRooms();
+    loadProgrammingLanguages();
+    loadStatistics();
+    loadAnnouncements();
+    
+    // Set up auto-refresh for statistics
+    setInterval(loadStatistics, 300000); // Refresh every 5 minutes
     
     // Search functionality
     function searchStudent() {
@@ -428,24 +442,39 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     function handleSearchResultClick(studentId, fullName) {
-        console.log("Clicked student:", studentId, fullName); // Add debugging
-        
-        // Set form values
-        document.getElementById('studentId').value = studentId;
-        document.getElementById('studentFullName').value = fullName;
-        
-        // Close search modal if it's open
-        const searchModal = bootstrap.Modal.getInstance(document.getElementById('searchModal'));
-        if (searchModal) {
-            searchModal.hide();
-        }
-        
-        // Show the sit-in form modal
-        setTimeout(() => {
-            const sitInFormModal = new bootstrap.Modal(document.getElementById('sitInFormModal'));
-            sitInFormModal.show();
-        }, 500); // Add a small delay to ensure the search modal is fully closed
+    console.log("Clicked student:", studentId, fullName);
+
+    // Set form values
+    document.getElementById('studentId').value = studentId;
+    document.getElementById('studentFullName').value = fullName;
+
+    // Fetch and display remaining sessions
+    fetch(`/get_student_remaining_sessions/${studentId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.remaining_sessions !== undefined) {
+                document.getElementById('remainingSessions').value = data.remaining_sessions;
+            } else {
+                document.getElementById('remainingSessions').value = "N/A";
+            }
+        })
+        .catch(error => {
+            console.error("Error fetching remaining sessions:", error);
+            document.getElementById('remainingSessions').value = "Error";
+        });
+
+    // Close search modal if open
+    const searchModal = bootstrap.Modal.getInstance(document.getElementById('searchModal'));
+    if (searchModal) {
+        searchModal.hide();
     }
+
+    // Show the sit-in form modal
+    setTimeout(() => {
+        const sitInFormModal = new bootstrap.Modal(document.getElementById('sitInFormModal'));
+        sitInFormModal.show();
+    }, 500);
+}
     
     // Attach event listener for search
     document.getElementById("searchInput").addEventListener("input", searchStudent);
@@ -510,7 +539,7 @@ function loadAnnouncements() {
         });
 }
 
-let purposePieChart = null;
+let purposeChart = null;
 
 function loadStatistics() {
     fetch('/get_admin_statistics')
@@ -519,86 +548,71 @@ function loadStatistics() {
             // Update statistics
             document.getElementById('totalStudents').textContent = data.total_students;
             document.getElementById('activeSitins').textContent = data.active_sitins;
+            document.getElementById('totalSitins').textContent = data.total_sitins;
             
             // Update pie chart
-            const purposes = data.purpose_stats.map(stat => stat.purpose);
-            const counts = data.purpose_stats.map(stat => stat.count);
-            
-            // Generate random colors for each purpose
-            const colors = purposes.map(() => 
-                '#' + Math.floor(Math.random()*16777215).toString(16)
-            );
-            
-            // Destroy existing chart if it exists
-            if (purposePieChart) {
-                purposePieChart.destroy();
+            if (data.purpose_stats) {
+                updatePurposeChart(data.purpose_stats);
             }
-            
-            // Create new chart
-            const ctx = document.getElementById('purposePieChart').getContext('2d');
-            purposePieChart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: purposes,
-                    datasets: [{
-                        data: counts,
-                        backgroundColor: colors
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        },
-                        title: {
-                            display: true,
-                            text: 'Sit-in Purposes Distribution'
-                        }
-                    }
-                }
-            });
         })
         .catch(error => console.error('Error loading statistics:', error));
 }
 
-// Add this to your DOMContentLoaded event listener
-document.addEventListener('DOMContentLoaded', function() {
-    loadProgrammingLanguages();
-    loadStatistics();
-    // Reload statistics every 5 minutes
-    setInterval(loadStatistics, 300000);
+function updatePurposeChart(purposeStats) {
+    const ctx = document.getElementById('purposeChart').getContext('2d');
     
-    // Handle sit-in form submission
-    document.getElementById('activateSitInForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        
-        fetch('/admin/activate_sitin', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                const modal = bootstrap.Modal.getInstance(document.getElementById('sitInFormModal'));
-                modal.hide();
-                this.reset();
-                loadStatistics();
-            } else {
-                alert('Error: ' + data.error);
+    // Destroy existing chart if it exists
+    if (purposeChart) {
+        purposeChart.destroy();
+    }
+    
+    const purposes = purposeStats.map(stat => stat.language.trim());
+    const counts = purposeStats.map(stat => stat.count);
+    const colors = purposes.map(() => 
+        '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')
+    );
+    
+    purposeChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: purposes,
+            datasets: [{
+                data: counts,
+                backgroundColor: colors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 15
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Programming Languages Distribution'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error activating sit-in');
-        });
+        }
     });
-});
+}
 
-// Add this to your DOMContentLoaded event listener
 function loadProgrammingLanguages() {
     fetch('/get_programming_languages')
         .then(response => response.json())
@@ -612,13 +626,6 @@ function loadProgrammingLanguages() {
         })
         .catch(error => console.error('Error loading languages:', error));
 }
-
-document.addEventListener('DOMContentLoaded', function() {
-    loadProgrammingLanguages();
-    loadStatistics();
-    // Reload statistics every 5 minutes
-    setInterval(loadStatistics, 300000);
-});
 
 function fetchRooms() {
     fetch("/get_labs")
@@ -646,5 +653,5 @@ function updateAllSessions() {
     })
     .catch(error => console.error("Error updating sessions:", error));
 }
-</script>        
+</script>
 {% endblock %}
