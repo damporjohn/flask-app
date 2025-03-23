@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <!-- Header with Back Button -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+        <h2>Today's Sit-In Records</h2>
+        <div>
+            <span class="badge bg-primary">Today's Records: {{ records|length }}</span>
+        </div>
+    </div>
+
+    <!-- Statistics Section -->
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Programming Languages Used Today</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="languagesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Labs Used Today</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="labsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Today's Records Table -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Today's Sit-In Sessions</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Sit-In ID</th>
+                            <th>Student ID</th>
+                            <th>Student Name</th>
+                            <th>Purpose</th>
+                            <th>Room Number</th>
+                            <th>Login Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if records %}
+                            {% for record in records %}
+                            <tr>
+                                <td>{{ record.id }}</td>
+                                <td>{{ record.student_id }}</td>
+                                <td>{{ record.firstname }} {{ record.lastname }}</td>
+                                <td>{{ record.purpose if record.purpose else 'N/A' }}</td>
+                                <td>{{ record.room_number if record.room_number else 'N/A' }}</td>
+                                <td>{{ record.login_time.strftime('%I:%M %p') if record.login_time else 'N/A' }}</td>
+                                <td>
+                                    {% if record.logout_time %}
+                                        <span class="badge bg-secondary">Completed</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center">No records found for today</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Make sure Chart.js is included -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+let languagesChart = null;
+let labsChart = null;
+
+function loadTodayStats() {
+    fetch('/get_today_stats')
+        .then(response => response.json())
+        .then(data => {
+            // Update languages chart
+            const languagesData = {
+                labels: data.languages.map(item => item.language),
+                datasets: [{
+                    data: data.languages.map(item => item.count),
+                    backgroundColor: [
+                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                        '#FF9F40', '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'
+                    ]
+                }]
+            };
+
+            // Update labs chart
+            const labsData = {
+                labels: data.labs.map(item => `Room ${item.room_number}`),
+                datasets: [{
+                    data: data.labs.map(item => item.count),
+                    backgroundColor: [
+                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                        '#FF9F40', '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'
+                    ]
+                }]
+            };
+
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Today\'s Statistics'
+                    }
+                }
+            };
+
+            // Destroy existing charts if they exist
+            if (languagesChart) languagesChart.destroy();
+            if (labsChart) labsChart.destroy();
+
+            // Create new charts
+            languagesChart = new Chart(
+                document.getElementById('languagesChart').getContext('2d'),
+                {
+                    type: 'pie',
+                    data: languagesData,
+                    options: chartOptions
+                }
+            );
+
+            labsChart = new Chart(
+                document.getElementById('labsChart').getContext('2d'),
+                {
+                    type: 'pie',
+                    data: labsData,
+                    options: chartOptions
+                }
+            );
+        })
+        .catch(error => {
+            console.error('Error loading statistics:', error);
+        });
+}
+
+// Load stats when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadTodayStats();
+    // Refresh stats every 5 minutes
+    setInterval(loadTodayStats, 300000);
+});
+</script>
+{% endblock %} 

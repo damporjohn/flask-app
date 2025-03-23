@@ -2,123 +2,224 @@
 
 {% block content %}
 <style>
-    body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        margin: 0;
-        display: flex;
-        background: #f0f2f5;
+    .dashboard-container {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 2rem;
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 1rem;
     }
+
     .sidebar {
-        height: 100%;
-        width: 250px;
         position: fixed;
-        top: 80px; /* Account for fixed header */
-        left: -250px;
-        background-color: #fff;
-        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-        transition: 0.3s;
-        z-index: 1020;
-        padding-top: 20px;
-    }
-    .sidebar.active {
+        top: 80px;
         left: 0;
+        height: calc(100vh - 80px);
+        width: 250px;
+        background: #ffffff;
+        box-shadow: var(--box-shadow);
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 1020;
+        padding: 1.5rem 0;
     }
-    .sidebar a {
-        padding: 12px 25px;
-        display: block;
-        color: #050505;
-        text-decoration: none;
-        transition: 0.3s;
-        font-size: 14px;
-        margin: 5px 15px;
-        border-radius: 8px;
+
+    .sidebar.active {
+        transform: translateX(0);
     }
-    .sidebar a:hover {
-        background: #f0f2f5;
-        color: #0d6efd;
-    }
-    .sidebar a i {
-        width: 20px;
-        margin-right: 10px;
-    }
-    .sidebar .btn-danger {
-        margin: 15px 25px;
-        text-align: center;
-    }
-    .sidebar .btn-danger:hover {
-        background-color: #dc3545;
-        color: white;
-    }
-    .content {
-        margin-left: 60px;
-        padding: 20px;
+
+    .sidebar-link {
         display: flex;
-        gap: 20px;
+        align-items: center;
+        padding: 0.75rem 1.5rem;
+        color: var(--text-primary);
+        text-decoration: none;
+        transition: all 0.2s ease;
+        margin: 0.25rem 1rem;
+        border-radius: 8px;
+        font-weight: 500;
     }
+
+    .sidebar-link:hover {
+        background: var(--light-bg);
+        color: var(--primary-color);
+        transform: translateX(5px);
+    }
+
+    .sidebar-link i {
+        width: 20px;
+        margin-right: 12px;
+        color: var(--text-secondary);
+    }
+
+    .sidebar-link:hover i {
+        color: var(--primary-color);
+    }
+
     .hamburger-btn {
         position: fixed;
         left: 20px;
         top: 90px;
         z-index: 1025;
-        background: #fff;
+        background: #ffffff;
         border: none;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        border-radius: 5px;
-        padding: 10px;
-        cursor: pointer;
-    }
-    .table th, .table td {
-        text-align: left;
-        padding: 12px;
-        border-bottom: 1px solid #e4e6eb;
-    }
-    .card {
-        background: white;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-        margin-bottom: 20px;
-    }
-    h2 {
-        color: #050505;
-        font-size: 20px;
-        margin-bottom: 15px;
-    }
-    .btn-danger {
-        background-color: #ff4444;
-        border: none;
+        box-shadow: var(--box-shadow);
         border-radius: 8px;
-        padding: 10px 20px;
-        color: white;
-        font-size: 14px;
+        padding: 0.75rem;
         cursor: pointer;
-        transition: 0.3s;
+        transition: all 0.2s ease;
     }
-    .btn-danger:hover {
-        background-color: #cc0000;
+
+    .hamburger-btn:hover {
+        background: var(--light-bg);
+        transform: scale(1.05);
     }
-    .text-center {
-        text-align: center;
+
+    .student-info-card {
+        background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+        color: white;
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
     }
-    .text-danger {
-        color: #ff4444;
+
+    .student-info-card h2 {
+        color: white;
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+        font-weight: 600;
     }
-    ul {
-        list-style-type: none;
-        padding: 0;
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
     }
-    ul li {
-        padding: 10px 0;
-        border-bottom: 1px solid #e4e6eb;
+
+    .info-item {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 1rem;
+        border-radius: 12px;
+        backdrop-filter: blur(10px);
     }
-    ul li:last-child {
+
+    .info-item h6 {
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.875rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .info-item p {
+        font-size: 1rem;
+        margin: 0;
+        font-weight: 500;
+    }
+
+    .feedback-card {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: var(--box-shadow);
+    }
+
+    .rating {
+        display: flex;
+        flex-direction: row-reverse;
+        justify-content: flex-start;
+        gap: 0.5rem;
+        margin: 1rem 0;
+    }
+
+    .rating input {
+        display: none;
+    }
+
+    .rating label {
+        cursor: pointer;
+        font-size: 2rem;
+        color: #d1d5db;
+        transition: all 0.2s ease;
+    }
+
+    .rating label:hover,
+    .rating label:hover ~ label,
+    .rating input:checked ~ label {
+        color: #fbbf24;
+    }
+
+    .announcements-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: var(--box-shadow);
+    }
+
+    .announcement-item {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        transition: all 0.2s ease;
+    }
+
+    .announcement-item:hover {
+        background: var(--light-bg);
+    }
+
+    .announcement-item:last-child {
         border-bottom: none;
     }
-    .main-content {
-        flex: 1;
+
+    .announcement-item h5 {
+        color: var(--text-primary);
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
     }
-    .right-sidebar {
-        width: 300px;
+
+    .announcement-item p {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .announcement-item small {
+        color: var(--text-secondary);
+        font-size: 0.75rem;
+    }
+
+    .sessions-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: var(--box-shadow);
+        margin-top: 1.5rem;
+    }
+
+    .sessions-count {
+        font-size: 2rem;
+        font-weight: 600;
+        color: var(--primary-color);
+        text-align: center;
+        margin: 1rem 0;
+    }
+
+    .modal-content {
+        border-radius: 16px;
+        border: none;
+        box-shadow: var(--box-shadow);
+    }
+
+    .modal-header {
+        border-bottom: 1px solid var(--border-color);
+        padding: 1.5rem;
+    }
+
+    .modal-body {
+        padding: 2rem;
+    }
+
+    .modal-footer {
+        border-top: 1px solid var(--border-color);
+        padding: 1.5rem;
     }
 </style>
 
@@ -129,80 +230,134 @@
 
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
-    <a href="{{ url_for('student_dashboard') }}"><i class="fas fa-home"></i> Home</a>
-    <a href="{{ url_for('edit_student_record') }}"><i class="fas fa-edit"></i> Edit Profile</a>
-    <a href="{{ url_for('sit_in_rules') }}"><i class="fas fa-clipboard-list"></i> Sit-in Rules</a>
-    <a href="{{ url_for('lab_rules') }}"><i class="fas fa-exclamation-circle"></i> Lab Rules & Regulations</a>
-    <a href="{{ url_for('sit_in_history') }}"><i class="fas fa-history"></i> Sit-in History</a>
-    <a href="{{ url_for('make_reservation') }}"><i class="fas fa-calendar-plus"></i> Reservation</a>
+    <a href="{{ url_for('student_dashboard') }}" class="sidebar-link">
+        <i class="fas fa-home"></i> Home
+    </a>
+    <a href="{{ url_for('edit_student_record') }}" class="sidebar-link">
+        <i class="fas fa-edit"></i> Edit Profile
+    </a>
+    <a href="{{ url_for('sit_in_rules') }}" class="sidebar-link">
+        <i class="fas fa-clipboard-list"></i> Sit-in Rules
+    </a>
+    <a href="{{ url_for('lab_rules') }}" class="sidebar-link">
+        <i class="fas fa-exclamation-circle"></i> Lab Rules & Regulations
+    </a>
+    <a href="{{ url_for('sit_in_history') }}" class="sidebar-link">
+        <i class="fas fa-history"></i> Sit-in History
+    </a>
+    <a href="{{ url_for('make_reservation') }}" class="sidebar-link">
+        <i class="fas fa-calendar-plus"></i> Reservation
+    </a>
 </div>
 
-<div class="content" id="content">
+<div class="dashboard-container">
     <!-- Main Content (Left Side) -->
     <div class="main-content">
-        <div class="card custom-card">
-            <div class="card-header">
-                <h2 class="mb-3 text-center">Student Information</h2>
+        <div class="student-info-card">
+            <h2>Student Information</h2>
+            {% if student %}
+            <div class="info-grid">
+                <div class="info-item">
+                    <h6>ID Number</h6>
+                    <p>{{ student.id }}</p>
+                </div>
+                <div class="info-item">
+                    <h6>Username</h6>
+                    <p>{{ student.username }}</p>
+                </div>
+                <div class="info-item">
+                    <h6>Full Name</h6>
+                    <p>{{ student.firstname }} {{ student.midname or '' }} {{ student.lastname }}</p>
+                </div>
+                <div class="info-item">
+                    <h6>Course</h6>
+                    <p>{{ student.course }}</p>
+                </div>
+                <div class="info-item">
+                    <h6>Year Level</h6>
+                    <p>{{ student.yearlevel }}</p>
+                </div>
+                <div class="info-item">
+                    <h6>Email</h6>
+                    <p>{{ student.email }}</p>
+                </div>
             </div>
-            <div class="card-body">
-                {% if student %}
-                <table class="table custom-table">
-                    <tr><th>ID No:</th><td>{{ student.id }}</td></tr>
-                    <tr><th>Username:</th><td>{{ student.username }}</td></tr>
-                    <tr><th>Full Name:</th><td>{{ student.firstname }} {{ student.midname or '' }} {{ student.lastname }}</td></tr>
-                    <tr><th>Course:</th><td>{{ student.course }}</td></tr>
-                    <tr><th>Year Level:</th><td>{{ student.yearlevel }}</td></tr>
-                    <tr><th>Email:</th><td>{{ student.email }}</td></tr>
-                    <tr><th>Registration Date:</th><td>{{ student.registration_date }}</td></tr>
-                    <tr><th>Remaining Sessions:</th><td>{{ student.remaining_sessions }}</td></tr>
-                </table>
-                {% else %}
-                <p class="text-center text-danger">No student data found.</p>
-                {% endif %}
-            </div>
+            {% else %}
+            <p class="text-center text-danger">No student data found.</p>
+            {% endif %}
+        </div>
+
+        <div class="feedback-card">
+            <h3 class="mb-4">Submit Feedback</h3>
+            <form id="reportForm">
+                <div class="mb-4">
+                    <label for="room_number" class="form-label">Select Room</label>
+                    <select class="form-control" id="room_number" name="room_number" required>
+                        <option value="">Select a Room</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Rate your experience</label>
+                    <div class="rating">
+                        <input type="radio" name="rating" value="5" id="star5"><label for="star5">★</label>
+                        <input type="radio" name="rating" value="4" id="star4"><label for="star4">★</label>
+                        <input type="radio" name="rating" value="3" id="star3"><label for="star3">★</label>
+                        <input type="radio" name="rating" value="2" id="star2"><label for="star2">★</label>
+                        <input type="radio" name="rating" value="1" id="star1"><label for="star1">★</label>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label for="report_text" class="form-label">Your Feedback</label>
+                    <textarea class="form-control" id="report_text" name="report_text" rows="4" required 
+                              placeholder="Share your experience with the computer laboratory..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-custom-primary w-100">
+                    <i class="fas fa-paper-plane me-2"></i>Submit Feedback
+                </button>
+            </form>
         </div>
     </div>
 
-    <!-- Right Sidebar (Announcements and Remaining Sessions) -->
+    <!-- Right Sidebar -->
     <div class="right-sidebar">
-        <div class="card">
-            <h2>Announcements</h2>
+        <div class="announcements-card">
+            <h3 class="mb-4">Announcements</h3>
             <div id="announcementsList">
                 <p class="text-center text-muted">Loading announcements...</p>
             </div>
         </div>
 
-        <div class="card">
-            <h2>Remaining Sessions</h2>
-            <p>Your remaining sit-in sessions: {{ student.remaining_sessions }}</p>
+        <div class="sessions-card">
+            <h3 class="mb-3">Remaining Sessions</h3>
+            <div class="sessions-count">
+                {{ student.remaining_sessions }}
+            </div>
+            <p class="text-center text-muted">Available sit-in sessions</p>
         </div>
     </div>
 </div>
 
-<!-- Activation Status Modal -->
+<!-- Modals -->
 {% if session.get('needs_activation') %}
 <div class="modal fade" id="activationModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-warning">
                 <h5 class="modal-title">Activation Required</h5>
             </div>
-            <div class="modal-body">
-                <div class="text-center mb-3">
-                    <i class="fas fa-exclamation-triangle text-warning fa-4x"></i>
-                </div>
-                <p>Your account needs to be activated by an administrator before you can access the system.</p>
+            <div class="modal-body text-center">
+                <i class="fas fa-exclamation-triangle text-warning fa-4x mb-4"></i>
+                <p class="mb-4">Your account needs to be activated by an administrator before you can access the system.</p>
                 <p>Please contact the lab administrator to activate a session for you using the Sit-In Form.</p>
             </div>
             <div class="modal-footer">
-                <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+                <a href="{{ url_for('logout') }}" class="btn btn-custom-secondary">Logout</a>
             </div>
         </div>
     </div>
 </div>
 {% endif %}
 
-<!-- Login Success Modal -->
 {% if session.get('needs_login') %}
 <div class="modal fade" id="loginSuccessModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
@@ -210,17 +365,15 @@
             <div class="modal-header bg-success text-white">
                 <h5 class="modal-title">Login Successful</h5>
             </div>
-            <div class="modal-body">
-                <div class="text-center mb-3">
-                    <i class="fas fa-check-circle text-success fa-4x"></i>
-                </div>
-                <p>Logged in as: <strong>{{ session.firstname }} {{ session.lastname }} ({{ session.user_id }})</strong></p>
-                <p>Purpose: <strong>{{ session.activation_purpose }}</strong></p>
-                <p>Room Number: <strong>{{ session.activation_room }}</strong></p>
-                <p>Please remember to log out when you finish your session.</p>
+            <div class="modal-body text-center">
+                <i class="fas fa-check-circle text-success fa-4x mb-4"></i>
+                <p class="mb-2">Logged in as: <strong>{{ session.firstname }} {{ session.lastname }} ({{ session.user_id }})</strong></p>
+                <p class="mb-2">Purpose: <strong>{{ session.activation_purpose }}</strong></p>
+                <p class="mb-4">Room Number: <strong>{{ session.activation_room }}</strong></p>
+                <p class="text-muted">Please remember to log out when you finish your session.</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" onclick="acknowledgeLogin()">Proceed</button>
+                <button type="button" class="btn btn-custom-primary" onclick="acknowledgeLogin()">Proceed</button>
             </div>
         </div>
     </div>
@@ -228,10 +381,8 @@
 {% endif %}
 
 <script>
-    /* eslint-disable */
     function toggleSidebar() {
-        let sidebar = document.getElementById("sidebar");
-        sidebar.classList.toggle("active");
+        document.getElementById("sidebar").classList.toggle("active");
     }
 
     function loadAnnouncements() {
@@ -241,10 +392,10 @@
                 const announcementsList = document.getElementById("announcementsList");
                 if (data.announcements && data.announcements.length > 0) {
                     announcementsList.innerHTML = data.announcements.map(announcement => `
-                        <div class="announcement-item p-3 border-bottom">
+                        <div class="announcement-item">
                             <h5>${announcement.title}</h5>
                             <p>${announcement.content}</p>
-                            <small class="text-muted">Posted: ${new Date(announcement.created_at).toLocaleString()}</small>
+                            <small>${new Date(announcement.created_at).toLocaleString()}</small>
                         </div>
                     `).join('');
                 } else {
@@ -257,92 +408,93 @@
             });
     }
 
-    // Load announcements when page loads
-    document.addEventListener('DOMContentLoaded', loadAnnouncements);
-
-    // Show the appropriate modal on page load
     document.addEventListener('DOMContentLoaded', function() {
-        // Set variables from Jinja2 context
+        loadAnnouncements();
+        loadAvailableRooms();
+        
         const needsActivation = {% if session.get('needs_activation') %}true{% else %}false{% endif %};
         const needsLogin = {% if session.get('needs_login') %}true{% else %}false{% endif %};
         
         if (needsActivation) {
-            var activationModal = new bootstrap.Modal(document.getElementById('activationModal'));
-            activationModal.show();
-            // Disable other interactions when activation is needed
-            document.querySelectorAll('button, a').forEach(element => {
-                if (!element.classList.contains('btn-secondary')) {
-                    element.disabled = true;
-                    element.style.pointerEvents = 'none';
-                }
-            });
+            new bootstrap.Modal(document.getElementById('activationModal')).show();
         }
         
         if (needsLogin) {
-            var loginModal = new bootstrap.Modal(document.getElementById('loginSuccessModal'));
-            loginModal.show();
+            new bootstrap.Modal(document.getElementById('loginSuccessModal')).show();
         }
     });
 
-    // Function to acknowledge login and clear the session flag
     function acknowledgeLogin() {
         fetch('/student/acknowledge_login', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            headers: { 'Content-Type': 'application/json' }
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                var loginModal = bootstrap.Modal.getInstance(document.getElementById('loginSuccessModal'));
-                loginModal.hide();
+                bootstrap.Modal.getInstance(document.getElementById('loginSuccessModal')).hide();
             }
         })
         .catch(error => console.error('Error:', error));
     }
 
-    // Check if session was ended by admin
-    function checkSessionStatus() {
-        fetch('/student/check_session_status')
+    function loadAvailableRooms() {
+        fetch('/get_labs')
             .then(response => response.json())
             .then(data => {
-                if (data.ended) {
-                    alert('Your session has been ended by an administrator');
-                    window.location.href = '/logout';
+                const roomSelect = document.getElementById('room_number');
+                roomSelect.innerHTML = '<option value="">Select a Room</option>';
+                
+                if (data.labs && Array.isArray(data.labs)) {
+                    data.labs.forEach(lab => {
+                        const option = document.createElement('option');
+                        option.value = lab.roomNumber;
+                        option.textContent = `Room ${lab.roomNumber}`;
+                        roomSelect.appendChild(option);
+                    });
                 }
             })
-            .catch(error => console.error('Error:', error));
+            .catch(error => {
+                console.error('Error loading rooms:', error);
+                alert('Error loading available rooms');
+            });
     }
 
-    // Check session status every 30 seconds
-    setInterval(checkSessionStatus, 30000);
-
-    // Function to handle sit-in logout
-    function logoutSitIn() {
-        if (!confirm('Are you sure you want to logout? You will need admin activation to login again.')) {
+    document.getElementById('reportForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData();
+        formData.append('report_text', document.getElementById('report_text').value);
+        formData.append('rating', document.querySelector('input[name="rating"]:checked')?.value);
+        formData.append('room_number', document.getElementById('room_number').value);
+        
+        if (!formData.get('rating')) {
+            alert('Please select a rating');
             return;
         }
-
-        fetch('/student/logout_sitin', {
+        
+        if (!formData.get('room_number')) {
+            alert('Please select a room');
+            return;
+        }
+        
+        fetch('/submit_report', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            body: formData
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert(data.message);
-                location.reload();
+                alert('Thank you for your feedback!');
+                this.reset();
             } else {
-                alert('Error: ' + data.error);
+                alert('Error: ' + (data.error || 'Failed to submit feedback'));
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error logging out');
+            alert('Error submitting feedback');
         });
-    }
+    });
 </script>
 {% endblock %}

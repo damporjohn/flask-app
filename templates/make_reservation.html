@@ -2,123 +2,199 @@
 
 {% block content %}
 <style>
-    body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        margin: 0;
-        display: flex;
-        background: #f0f2f5;
+    .dashboard-container {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 1rem;
     }
+
     .sidebar {
-        height: 100%;
-        width: 250px;
         position: fixed;
-        top: 80px; /* Account for fixed header */
-        left: -250px;
-        background-color: #fff;
-        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-        transition: 0.3s;
-        z-index: 1020;
-        padding-top: 20px;
-    }
-    .sidebar.active {
+        top: 80px;
         left: 0;
+        height: calc(100vh - 80px);
+        width: 250px;
+        background: #ffffff;
+        box-shadow: var(--box-shadow);
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 1020;
+        padding: 1.5rem 0;
     }
-    .sidebar a {
-        padding: 12px 25px;
-        display: block;
-        color: #050505;
-        text-decoration: none;
-        transition: 0.3s;
-        font-size: 14px;
-        margin: 5px 15px;
-        border-radius: 8px;
+
+    .sidebar.active {
+        transform: translateX(0);
     }
-    .sidebar a:hover {
-        background: #f0f2f5;
-        color: #0d6efd;
-    }
-    .sidebar a i {
-        width: 20px;
-        margin-right: 10px;
-    }
-    .sidebar .btn-danger {
-        margin: 15px 25px;
-        text-align: center;
-    }
-    .sidebar .btn-danger:hover {
-        background-color: #dc3545;
-        color: white;
-    }
-    .content {
-        margin-left: 60px;
-        padding: 20px;
+
+    .sidebar-link {
         display: flex;
-        gap: 20px;
+        align-items: center;
+        padding: 0.75rem 1.5rem;
+        color: var(--text-primary);
+        text-decoration: none;
+        transition: all 0.2s ease;
+        margin: 0.25rem 1rem;
+        border-radius: 8px;
+        font-weight: 500;
     }
+
+    .sidebar-link:hover {
+        background: var(--light-bg);
+        color: var(--primary-color);
+        transform: translateX(5px);
+    }
+
+    .sidebar-link i {
+        width: 20px;
+        margin-right: 12px;
+        color: var(--text-secondary);
+    }
+
+    .sidebar-link:hover i {
+        color: var(--primary-color);
+    }
+
     .hamburger-btn {
         position: fixed;
         left: 20px;
         top: 90px;
         z-index: 1025;
-        background: #fff;
+        background: #ffffff;
         border: none;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        border-radius: 5px;
-        padding: 10px;
+        box-shadow: var(--box-shadow);
+        border-radius: 8px;
+        padding: 0.75rem;
         cursor: pointer;
+        transition: all 0.2s ease;
     }
-    .table th, .table td {
-        text-align: left;
-        padding: 12px;
-        border-bottom: 1px solid #e4e6eb;
+
+    .hamburger-btn:hover {
+        background: var(--light-bg);
+        transform: scale(1.05);
     }
-    .card {
+
+    .reservation-card {
         background: white;
+        border-radius: 16px;
+        box-shadow: var(--box-shadow);
+        overflow: hidden;
+    }
+
+    .reservation-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+        color: white;
+        padding: 2rem;
+        position: relative;
+    }
+
+    .reservation-header h2 {
+        color: white;
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 600;
+    }
+
+    .reservation-header p {
+        color: rgba(255, 255, 255, 0.9);
+        margin: 0.5rem 0 0;
+        font-size: 1rem;
+    }
+
+    .reservation-form {
+        padding: 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    select.form-control {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23475569' viewBox='0 0 16 16'%3E%3Cpath d='M8 10.5l4-4H4l4 4z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        padding-right: 2.5rem;
+    }
+
+    .alert {
         border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-        margin-bottom: 20px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        border: none;
     }
-    h2 {
-        color: #050505;
-        font-size: 20px;
-        margin-bottom: 15px;
+
+    .alert-success {
+        background-color: #dcfce7;
+        color: #166534;
     }
-    .btn-danger {
-        background-color: #ff4444;
+
+    .alert-danger {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+
+    .btn-submit {
+        background: var(--primary-color);
+        color: white;
         border: none;
         border-radius: 8px;
-        padding: 10px 20px;
-        color: white;
-        font-size: 14px;
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        font-weight: 500;
+        width: 100%;
         cursor: pointer;
-        transition: 0.3s;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
     }
-    .btn-danger:hover {
-        background-color: #cc0000;
+
+    .btn-submit:hover {
+        background: #1d4ed8;
+        transform: translateY(-1px);
     }
-    .text-center {
-        text-align: center;
+
+    .btn-submit i {
+        font-size: 1.125rem;
     }
-    .text-danger {
-        color: #ff4444;
-    }
-    ul {
-        list-style-type: none;
-        padding: 0;
-    }
-    ul li {
-        padding: 10px 0;
-        border-bottom: 1px solid #e4e6eb;
-    }
-    ul li:last-child {
-        border-bottom: none;
-    }
-    .main-content {
-        flex: 1;
-    }
-    .right-sidebar {
-        width: 300px;
+
+    @media (max-width: 768px) {
+        .dashboard-container {
+            padding: 0 0.5rem;
+        }
+        
+        .reservation-header {
+            padding: 1.5rem;
+        }
+        
+        .reservation-form {
+            padding: 1.5rem;
+        }
     }
 </style>
 
@@ -129,23 +205,33 @@
 
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
-    <a href="{{ url_for('student_dashboard') }}"><i class="fas fa-home"></i> Home</a>
-    <a href="{{ url_for('edit_student_record') }}"><i class="fas fa-edit"></i> Edit Profile</a>
-    <a href="{{ url_for('sit_in_rules') }}"><i class="fas fa-clipboard-list"></i> Sit-in Rules</a>
-    <a href="{{ url_for('lab_rules') }}"><i class="fas fa-exclamation-circle"></i> Lab Rules & Regulations</a>
-    <a href="{{ url_for('sit_in_history') }}"><i class="fas fa-history"></i> Sit-in History</a>
-    <a href="{{ url_for('make_reservation') }}"><i class="fas fa-calendar-plus"></i> Reservation</a>
-    <a href="#" onclick="logoutSitIn()"><i class="fas fa-sign-out-alt"></i> End Session</a>
-    <a href="{{ url_for('logout') }}" class="btn btn-danger mt-3"><i class="fas fa-power-off"></i> Logout</a>
+    <a href="{{ url_for('student_dashboard') }}" class="sidebar-link">
+        <i class="fas fa-home"></i> Home
+    </a>
+    <a href="{{ url_for('edit_student_record') }}" class="sidebar-link">
+        <i class="fas fa-edit"></i> Edit Profile
+    </a>
+    <a href="{{ url_for('sit_in_rules') }}" class="sidebar-link">
+        <i class="fas fa-clipboard-list"></i> Sit-in Rules
+    </a>
+    <a href="{{ url_for('lab_rules') }}" class="sidebar-link">
+        <i class="fas fa-exclamation-circle"></i> Lab Rules & Regulations
+    </a>
+    <a href="{{ url_for('sit_in_history') }}" class="sidebar-link">
+        <i class="fas fa-history"></i> Sit-in History
+    </a>
+    <a href="{{ url_for('make_reservation') }}" class="sidebar-link">
+        <i class="fas fa-calendar-plus"></i> Reservation
+    </a>
 </div>
 
-<div class="content" id="content">
-<div class="main-content">
-    <div class="card custom-card">
-        <div class="card-header">
-            <h2>Make Reservation</h2>
+<div class="dashboard-container">
+    <div class="reservation-card">
+        <div class="reservation-header">
+            <h2>Make a Reservation</h2>
+            <p>Schedule your computer laboratory session</p>
         </div>
-        <div class="card-body">
+        <div class="reservation-form">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
@@ -155,7 +241,7 @@
             {% endwith %}
             
             <form id="reservationForm" method="POST" action="{{ url_for('make_reservation') }}">
-                <div class="mb-3">
+                <div class="form-group">
                     <label for="purpose" class="form-label">Purpose</label>
                     <select class="form-control" id="purpose" name="purpose" required>
                         <option value="">Select Purpose</option>
@@ -164,60 +250,35 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="mb-3">
+                <div class="form-group">
                     <label for="room" class="form-label">Room</label>
                     <select class="form-control" id="room" name="room" required>
                         <option value="">Select Room</option>
                         {% for lab in labs %}
-                            <option value="{{ lab.id }}">Room {{ lab.roomNumber }}</option>
+                            <option value="{{ lab.roomNumber }}">Room {{ lab.roomNumber }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="mb-3">
+                <div class="form-group">
                     <label for="date" class="form-label">Date</label>
                     <input type="date" class="form-control" id="date" name="date" required>
                 </div>
-                <div class="mb-3">
+                <div class="form-group">
                     <label for="time" class="form-label">Time</label>
                     <input type="time" class="form-control" id="time" name="time" required>
                 </div>
-                <button type="submit" class="btn btn-primary">Submit Reservation</button>
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-calendar-check"></i>
+                    Submit Reservation
+                </button>
             </form>
         </div>
     </div>
 </div>
-</div>
 
 <script>
     function toggleSidebar() {
-        let sidebar = document.getElementById("sidebar");
-        sidebar.classList.toggle("active");
-    }
-
-    function logoutSitIn() {
-        if (!confirm('Are you sure you want to logout? You will need admin activation to login again.')) {
-            return;
-        }
-        
-        fetch('/student/logout_sitin', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                location.reload();
-            } else {
-                alert('Error: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error logging out');
-        });
+        document.getElementById("sidebar").classList.toggle("active");
     }
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -228,7 +289,6 @@
         // Handle form submission
         const form = document.getElementById('reservationForm');
         form.onsubmit = function(e) {
-            // Remove the preventDefault to allow normal form submission
             const formData = new FormData(form);
             
             // Validate form data
@@ -243,7 +303,6 @@
                 return false;
             }
             
-            // Allow the form to submit normally
             return true;
         };
     });

@@ -2,6 +2,7 @@ import mysql.connector
 from flask import Flask, request, redirect, url_for, session, render_template, flash, jsonify, logging
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime, date
+import pymysql
 registration_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # Add this at the top of your app.py with your other constants
@@ -385,13 +386,14 @@ def sit_in_records():
         conn = mysql.connector.connect(**DB_CONFIG)
         cursor = conn.cursor(dictionary=True)
 
-        # Get all sit-in records, ordering by logout_time (latest first)
+        # Get only today's sit-in records
         cursor.execute("""
             SELECT s.id, s.student_id, s.purpose, s.room_number, 
                    s.login_time, s.logout_time,
                    st.firstname, st.lastname
             FROM sit_in s
             LEFT JOIN students st ON s.student_id = st.id
+            WHERE DATE(s.login_time) = CURDATE()
             ORDER BY 
                 CASE 
                     WHEN s.logout_time IS NULL THEN 1 
@@ -401,7 +403,7 @@ def sit_in_records():
         """)
         records = cursor.fetchall()
 
-        return render_template('sit_in.html', records=records)
+        return render_template('sit_in_records.html', records=records)
 
     except mysql.connector.Error as e:
         flash(f"Database error: {e}", "danger")
@@ -526,30 +528,40 @@ def make_reservation():
         student = cursor.fetchone()
 
         if request.method == 'POST':
-            lab_id = request.form.get('room')
+            room_number = request.form.get('room')
             date = request.form.get('date')
             time = request.form.get('time')
             purpose = request.form.get('purpose')
 
-            if not all([lab_id, date, time, purpose]):
+            if not all([room_number, date, time, purpose]):
                 flash("All fields are required.", "danger")
                 return redirect(url_for('make_reservation'))
 
+            # Verify that the room exists in labs table
+            cursor.execute("SELECT roomNumber FROM labs WHERE roomNumber = %s", (room_number,))
+            if not cursor.fetchone():
+                flash("Invalid room number selected.", "danger")
+                return redirect(url_for('make_reservation'))
+
             try:
+                # Insert the reservation with default values for new columns
                 cursor.execute("""
                     INSERT INTO reservation_requests 
-                        (student_id, lab_id, purpose, requested_date, requested_time, status, created_at)
-                        VALUES (%s, %s, %s, %s, %s, 'pending', NOW())
-                """, (student['id'], lab_id, purpose, date, time))
+                    (student_id, room_number, purpose, requested_date, requested_time, status, created_at, used)
+                    VALUES (%s, %s, %s, %s, %s, 'pending', NOW(), 0)
+                """, (student['id'], room_number, purpose, date, time))
+                
                 conn.commit()
                 flash("Reservation request sent successfully!", "success")
                 return redirect(url_for('student_dashboard'))
+                
             except mysql.connector.Error as e:
+                print(f"Error in make_reservation: {str(e)}")  # Add logging
                 flash(f"Error saving reservation: {str(e)}", "danger")
                 return redirect(url_for('make_reservation'))
 
-        # For GET request, fetch available labs with their IDs
-        cursor.execute("SELECT id, roomNumber FROM labs WHERE status = 'Available'")
+        # For GET request, fetch available labs
+        cursor.execute("SELECT roomNumber FROM labs WHERE status = 'Available'")
         labs = cursor.fetchall()
 
         return render_template('make_reservation.html', 
@@ -558,6 +570,7 @@ def make_reservation():
                             programming_languages=PROGRAMMING_LANGUAGES)
 
     except mysql.connector.Error as e:
+        print(f"Database error in make_reservation: {str(e)}")  # Add logging
         flash(f"Database error: {e}", "danger")
         return redirect(url_for('student_dashboard'))
 
@@ -591,44 +604,40 @@ def handle_reservation(request_id, action):
             # Update the reservation status
             cursor.execute("""
                 UPDATE reservation_requests 
-                SET status = 'approved', admin_response = NOW()
+                SET status = 'approved', 
+                    admin_response = NOW(),
+                    used = 0
                 WHERE id = %s
             """, (request_id,))
             
-            # Get student's remaining sessions
-            cursor.execute("""
-                SELECT remaining_sessions FROM students
-                WHERE id = %s
-            """, (reservation['student_id'],))
-            
-            student = cursor.fetchone()
-            
-            # If student has remaining sessions, don't decrement
-            # This will happen when they actually use the reservation
-            
             conn.commit()
-            return jsonify({'success': 'Reservation approved successfully'})
+            return jsonify({'success': True, 'message': 'Reservation approved successfully'})
             
         elif action == 'reject':
             # Update the reservation status
             cursor.execute("""
                 UPDATE reservation_requests 
-                SET status = 'rejected', admin_response = NOW()
+                SET status = 'rejected', 
+                    admin_response = NOW(),
+                    used = 1
                 WHERE id = %s
             """, (request_id,))
             
             conn.commit()
-            return jsonify({'success': 'Reservation rejected successfully'})
+            return jsonify({'success': True, 'message': 'Reservation rejected successfully'})
         
         else:
             return jsonify({'error': 'Invalid action'})
 
     except mysql.connector.Error as e:
+        print(f"Database error in handle_reservation: {str(e)}")  # Add logging
         return jsonify({'error': str(e)})
 
     finally:
-        cursor.close()
-        conn.close()
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
 
 @app.route('/logout')
 def logout():
@@ -652,6 +661,19 @@ def post_announcement():
         conn = mysql.connector.connect(**DB_CONFIG)
         cursor = conn.cursor(dictionary=True)
         
+        # First, ensure the announcements table exists
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS announcements (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+        
+        # Now insert the announcement
         cursor.execute("""
             INSERT INTO announcements (title, content)
             VALUES (%s, %s)
@@ -661,11 +683,14 @@ def post_announcement():
         return jsonify({'success': True})
         
     except mysql.connector.Error as e:
+        print(f"Database error in post_announcement: {str(e)}")  # Add logging
         return jsonify({'error': str(e)}), 500
         
     finally:
-        cursor.close()
-        conn.close()
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
 
 @app.route('/get_announcements')
 def get_announcements():
@@ -1334,37 +1359,53 @@ def acknowledge_login():
     
     return jsonify({'success': True})
 
-@app.route('/admin/get_reservations')
+@app.route('/get_reservations')
 def get_reservations():
-    if 'role' not in session or session['role'] != 'admin':
-        return jsonify({'error': 'Unauthorized'}), 403
-        
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 401
+
     try:
         conn = mysql.connector.connect(**DB_CONFIG)
         cursor = conn.cursor(dictionary=True)
-        
+
+        # Get all reservations that haven't been used yet
         cursor.execute("""
             SELECT 
-                r.id,
-                r.student_id,
-                s.firstname,
-                s.lastname,
-                r.purpose,
-                l.roomNumber as room_number,
+                r.id, 
+                r.student_id, 
+                r.room_number, 
+                r.purpose, 
                 DATE_FORMAT(r.requested_date, '%Y-%m-%d') as requested_date,
                 TIME_FORMAT(r.requested_time, '%H:%i') as requested_time,
-                r.status
+                r.status, 
+                r.created_at,
+                r.used,
+                s.firstname, 
+                s.lastname
             FROM reservation_requests r
             JOIN students s ON r.student_id = s.id
-            JOIN labs l ON r.lab_id = l.id
+            WHERE (r.used = 0 OR r.used IS NULL)
             ORDER BY r.created_at DESC
         """)
         
         reservations = cursor.fetchall()
-        return jsonify({'reservations': reservations})
         
+        # Convert datetime objects to string format for JSON serialization
+        for reservation in reservations:
+            if isinstance(reservation['created_at'], datetime):
+                reservation['created_at'] = reservation['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+
+        return jsonify({'reservations': reservations})
+
     except mysql.connector.Error as e:
+        print(f"Database error in get_reservations: {str(e)}")  # Add logging
         return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
 
 @app.route('/admin/add_used_column', methods=['GET'])
 def add_used_column():
@@ -1494,7 +1535,7 @@ def activate_reservation(reservation_id):
                 (student_id, purpose, room_number, is_activated, activation_time, reservation_id)
                 VALUES (%s, %s, %s, 1, NOW(), %s)
             """, (reservation['student_id'], reservation['purpose'], 
-                  reservation['lab_id'], reservation_id))
+                  reservation['room_number'], reservation_id))
         except mysql.connector.Error as e:
             if "Unknown column 'reservation_id'" in str(e):
                 # If reservation_id column doesn't exist, add it first
@@ -1511,7 +1552,7 @@ def activate_reservation(reservation_id):
                     (student_id, purpose, room_number, is_activated, activation_time, reservation_id)
                     VALUES (%s, %s, %s, 1, NOW(), %s)
                 """, (reservation['student_id'], reservation['purpose'], 
-                      reservation['lab_id'], reservation_id))
+                      reservation['room_number'], reservation_id))
             else:
                 raise
         
@@ -1566,6 +1607,238 @@ def get_student_remaining_sessions(student_id):
             cursor.close()
         if conn:
             conn.close()
+
+
+# Get programming languages count from the database
+def get_language_data():
+    conn = pymysql.connect(**DB_CONFIG)
+    cursor = conn.cursor()
+
+    query = "SELECT purpose FROM sit_in"
+    cursor.execute(query)
+    results = cursor.fetchall()
+    
+    # Normalize data
+    language_count = {lang: 0 for lang in PROGRAMMING_LANGUAGES}
+    
+    for row in results:
+        purpose = row[0].strip().lower()
+        for lang in PROGRAMMING_LANGUAGES:
+            if lang.lower() in purpose:
+                language_count[lang] += 1
+                break
+
+    cursor.close()
+    conn.close()
+    return language_count
+
+@app.route('/get_data')
+def get_data():
+    return jsonify(get_language_data())
+
+@app.route('/get_today_stats')
+def get_today_stats():
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get programming languages used today
+        cursor.execute("""
+            SELECT 
+                SUBSTRING_INDEX(SUBSTRING_INDEX(purpose, ',', numbers.n), ',', -1) as language,
+                COUNT(*) as count
+            FROM
+                sit_in
+                CROSS JOIN (
+                    SELECT 1 + ones.n + tens.n * 10 as n
+                    FROM
+                        (SELECT 0 as n UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) ones
+                        CROSS JOIN
+                        (SELECT 0 as n UNION SELECT 1) tens
+                    ORDER BY n
+                ) numbers
+            WHERE
+                DATE(login_time) = CURDATE()
+                AND numbers.n <= 1 + (LENGTH(sit_in.purpose) - LENGTH(REPLACE(sit_in.purpose, ',', '')))
+                AND SUBSTRING_INDEX(SUBSTRING_INDEX(purpose, ',', numbers.n), ',', -1) != ''
+            GROUP BY language
+            ORDER BY count DESC
+        """)
+        languages = cursor.fetchall()
+        
+        # Get labs used today
+        cursor.execute("""
+            SELECT 
+                room_number,
+                COUNT(*) as count
+            FROM sit_in
+            WHERE DATE(login_time) = CURDATE()
+            GROUP BY room_number
+            ORDER BY count DESC
+        """)
+        labs = cursor.fetchall()
+        
+        return jsonify({
+            'languages': languages,
+            'labs': labs
+        })
+        
+    except mysql.connector.Error as e:
+        return jsonify({'error': str(e)}), 500
+        
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/reservations')
+def reservations():
+    if session.get('role') != 'admin':
+        flash('You must be an admin to access this page.', 'danger')
+        return redirect(url_for('login_dashboard'))
+    return render_template('reservations.html')
+
+@app.route('/create_announcements_table')
+def create_announcements_table():
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        
+        # Create the announcements table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS announcements (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+        """)
+        
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Announcements table created successfully'})
+        
+    except mysql.connector.Error as e:
+        return jsonify({'error': str(e)}), 500
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/create_reports_table')
+def create_reports_table():
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        
+        # Create the reports table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS reports (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                student_id INT,
+                report_text TEXT NOT NULL,
+                rating INT CHECK (rating >= 1 AND rating <= 5),
+                room_number VARCHAR(50) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                status VARCHAR(20) DEFAULT 'unread',
+                FOREIGN KEY (student_id) REFERENCES students(id)
+            )
+        """)
+        
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Reports table created successfully'})
+        
+    except mysql.connector.Error as e:
+        return jsonify({'error': str(e)}), 500
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/submit_report', methods=['POST'])
+def submit_report():
+    if 'user_id' not in session or session.get('role') != 'student':
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    try:
+        report_text = request.form.get('report_text')
+        rating = request.form.get('rating')
+        room_number = request.form.get('room_number')
+        
+        if not report_text or not rating or not room_number:
+            return jsonify({'error': 'Report text, rating, and room number are required'}), 400
+            
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            INSERT INTO reports (student_id, report_text, rating, room_number)
+            VALUES (%s, %s, %s, %s)
+        """, (session['user_id'], report_text, rating, room_number))
+        
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Report submitted successfully'})
+        
+    except mysql.connector.Error as e:
+        return jsonify({'error': str(e)}), 500
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/get_reports')
+def get_reports():
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT r.*, s.firstname, s.lastname
+            FROM reports r
+            JOIN students s ON r.student_id = s.id
+            ORDER BY r.created_at DESC
+        """)
+        
+        reports = cursor.fetchall()
+        
+        # Convert datetime objects to string for JSON serialization
+        for report in reports:
+            report['created_at'] = report['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+            
+        return jsonify({'reports': reports})
+        
+    except mysql.connector.Error as e:
+        return jsonify({'error': str(e)}), 500
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/feedback_reports')
+def feedback_reports():
+    if session.get('role') != 'admin':
+        flash('You must be an admin to access this page.', 'danger')
+        return redirect(url_for('login_dashboard'))
+    return render_template('feedback_reports.html')
 
 if __name__ == '__main__':
     import signal

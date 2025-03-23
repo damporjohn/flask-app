@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <!-- Header with Back Button -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+        <h2>Reservations</h2>
+        <div>
+            <span class="badge bg-primary">Total Pending: <span id="pendingCount">0</span></span>
+        </div>
+    </div>
+
+    <!-- Reservations Table -->
+    <div class="card custom-card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Pending Reservations</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table custom-table">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Name</th>
+                            <th>Purpose</th>
+                            <th>Room</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reservationsTableBody">
+                        <tr>
+                            <td colspan="8" class="text-center">Loading reservations...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Function to load reservations
+function loadReservations() {
+    fetch('/get_reservations')
+        .then(response => response.json())
+        .then(data => {
+            const tableBody = document.getElementById('reservationsTableBody');
+            
+            // Filter out used reservations
+            const activeReservations = data.reservations ? data.reservations.filter(r => !r.used) : [];
+            
+            // Update pending count
+            document.getElementById('pendingCount').textContent = activeReservations.length;
+            
+            if (!activeReservations || activeReservations.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="8" class="text-center">No pending reservations found</td></tr>';
+                return;
+            }
+            
+            tableBody.innerHTML = activeReservations.map(reservation => `
+                <tr data-reservation-id="${reservation.id}">
+                    <td>${reservation.student_id}</td>
+                    <td>${reservation.firstname} ${reservation.lastname}</td>
+                    <td>${reservation.purpose}</td>
+                    <td>${reservation.room_number}</td>
+                    <td>${reservation.requested_date}</td>
+                    <td>${reservation.requested_time}</td>
+                    <td>
+                        <span class="badge ${reservation.status === 'pending' ? 'bg-warning' : 'bg-success'}">
+                            ${reservation.status}
+                        </span>
+                    </td>
+                    <td>
+                        ${reservation.status === 'pending' ? `
+                        <button class="btn btn-sm btn-success" onclick="approveReservation(${reservation.id})">
+                            <i class="fas fa-check"></i> Approve
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="disapproveReservation(${reservation.id})">
+                            <i class="fas fa-times"></i> Disapprove
+                        </button>
+                        ` : `
+                        <button class="btn btn-sm btn-primary" onclick="activateSession(${reservation.id})">
+                            <i class="fas fa-play"></i> Activate Session
+                        </button>
+                        `}
+                    </td>
+                </tr>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('reservationsTableBody').innerHTML = 
+                '<tr><td colspan="8" class="text-center text-danger">Error loading reservations</td></tr>';
+        });
+}
+
+// Function to approve a reservation
+function approveReservation(reservationId) {
+    if (!confirm('Are you sure you want to approve this reservation?')) {
+        return;
+    }
+    
+    fetch(`/admin/handle_reservation/${reservationId}/approve`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Reservation approved successfully');
+            loadReservations();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error approving reservation');
+    });
+}
+
+// Function to disapprove a reservation
+function disapproveReservation(reservationId) {
+    if (!confirm('Are you sure you want to disapprove this reservation?')) {
+        return;
+    }
+    
+    fetch(`/admin/handle_reservation/${reservationId}/reject`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Reservation disapproved successfully');
+            loadReservations();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error disapproving reservation');
+    });
+}
+
+// Function to activate session from reservation
+function activateSession(reservationId) {
+    if (!confirm('Are you sure you want to activate this session?')) {
+        return;
+    }
+    
+    // First get the reservation details from the table row
+    const row = document.querySelector(`tr[data-reservation-id="${reservationId}"]`);
+    const formData = new FormData();
+    formData.append('student_id', row.cells[0].textContent); // Student ID from first column
+    formData.append('purpose', row.cells[2].textContent); // Purpose from third column
+    formData.append('room_number', row.cells[3].textContent); // Room from fourth column
+    formData.append('reservation_id', reservationId); // Add reservation ID
+    
+    fetch('/admin/activate_sitin', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            loadReservations();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error activating session');
+    });
+}
+
+// Load reservations when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadReservations();
+    // Refresh reservations every minute
+    setInterval(loadReservations, 60000);
+});
+</script>
+{% endblock %} 

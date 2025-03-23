@@ -20,6 +20,7 @@
         flex-direction: column;
     }
     .header {
+        margin-top: 90px;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -157,6 +158,30 @@
         color: var(--accent-color);
         font-weight: 500;
     }
+    .stat-card {
+        border-radius: 10px;
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    .stat-card h3 {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    .custom-card {
+        border: none;
+        box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        border-radius: 15px;
+    }
+    .card-header {
+        background-color: transparent;
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+    }
+    #languageChart {
+        min-height: 300px;
+    }
 </style>
 
 <!-- Header -->
@@ -167,112 +192,107 @@
         <a data-bs-toggle="modal" data-bs-target="#searchModal">Search</a>
         <a href="{{ url_for('sit_in_records') }}">View Sit-in Records</a>
         <a href="{{ url_for('current_sit_in') }}">Sit In</a>
+        <a href="{{ url_for('reservations') }}">Reservations</a>
         <a href="{{ url_for('sit_in_reports') }}">Sit-in Reports</a>
-        <a data-bs-toggle="modal" data-bs-target="#feedbackReportsModal">Feedback Reports</a>
-        <a data-bs-toggle="modal" data-bs-target="#reservationModal">Reservation</a>
+        <a href="{{ url_for('feedback_reports') }}">Feedback Reports</a>
         <button onclick="updateAllSessions()">Reset All Sessions</button>
     </div>
 </div>
 
+<!-- Container -->
 <div class="container">
-    <div class="card custom-card">
-        <div class="card-header">
-            <h2>Admin Dashboard</h2>
-        </div>
-        <div class="card-body">
-            <table class="table custom-table">
-                <div class="row">
-                    <!-- Main Container (Left Side) -->
-                    <div class="col-lg-8">
-                        <div class="card mb-4">
-                            <div class="card-body">
-                                <div class="d-flex align-items-center mb-4">
-                                    <img src="{{ url_for('static', filename='logo/ccslogo.png') }}" 
-                                         alt="Admin Profile" class="rounded-circle me-3" style="width: 100px;">
-                                    <div>
-                                        <h3 class="mb-1">Welcome, Admin {{ session.firstname }}!</h3>
-                                        <p class="text-muted mb-0">College of Computer Studies</p>
-                                        <p class="text-muted mb-0">School Year: 2024-2025</p>
-                                        <p class="text-muted">{{ current_term }}</p>
-                                    </div>
-                                </div>
-                                
-                                <!-- Quick Actions -->
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <a href="{{ url_for('current_sit_in') }}" class="card h-100 text-decoration-none">
-                                            <div class="card-body">
-                                                <h5><i class="fas fa-users"></i> Current Sit-Ins</h5>
-                                                <p class="text-muted">View and manage active sit-in sessions</p>
-                                            </div>
-                                        </a>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <a href="{{ url_for('sit_in_reports') }}" class="card h-100 text-decoration-none">
-                                            <div class="card-body">
-                                                <h5><i class="fas fa-chart-bar"></i> Reports</h5>
-                                                <p class="text-muted">View detailed sit-in reports and analytics</p>
-                                            </div>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
+    <!-- Main Content Row -->
+    <div class="row">
+        <!-- Left Column (8 columns wide) -->
+        <div class="col-lg-8">
+            <!-- Welcome Card -->
+            <div class="card custom-card mb-4">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-4">
+                        <img src="{{ url_for('static', filename='logo/ccslogo.png') }}" 
+                             alt="Admin Profile" class="rounded-circle me-3" style="width: 100px;">
+                        <div>
+                            <h3 class="mb-1">Welcome, Admin {{ session.firstname }}!</h3>
+                            <p class="text-muted mb-0">College of Computer Studies</p>
+                            <p class="text-muted mb-0">School Year: 2024-2025</p>
+                            <p class="text-muted">{{ current_term }}</p>
                         </div>
                     </div>
-                    <!-- Right Sidebar -->
-                    <div class="col-lg-4">
-                        <!-- Announcements Section -->
-                        <div class="card mb-4">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">Announcements</h5>
-                                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#announcementModal">
-                                    <i class="fas fa-plus"></i> New
-                                </button>
-                            </div>
-                            <div class="card-body">
-                                <div id="announcementsList">
-                                    <p class="text-center text-muted">Loading announcements...</p>
+                    
+                    <!-- Quick Actions -->
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <a href="{{ url_for('current_sit_in') }}" class="card h-100 text-decoration-none">
+                                <div class="card-body">
+                                    <h5><i class="fas fa-users"></i> Current Sit-Ins</h5>
+                                    <p class="text-muted">View and manage active sit-in sessions</p>
                                 </div>
-                            </div>
+                            </a>
                         </div>
-
-                        <!-- Quick Statistics Card -->
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="mb-0">Quick Statistics</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row g-3">
-                                    <div class="col-4">
-                                        <div class="stat-card bg-primary bg-opacity-10 p-3 rounded">
-                                            <h3 id="totalStudents">0</h3>
-                                            <p>Total Students Registered</p>
-                                        </div>
-                                    </div>
-                                    <div class="col-4">
-                                        <div class="stat-card bg-success bg-opacity-10 p-3 rounded">
-                                            <h3 id="activeSitins">0</h3>
-                                            <p>Active Sit-ins</p>
-                                        </div>
-                                    </div>
-                                    <div class="col-4">
-                                        <div class="stat-card bg-info bg-opacity-10 p-3 rounded">
-                                            <h3 id="totalSitins">0</h3>
-                                            <p>Total Sit-ins</p>
-                                        </div>
-                                    </div>
-                                    <div class="col-12 mt-4">
-                                        <h5>Programming Languages Distribution</h5>
-                                        <div style="height: 300px; position: relative;">
-                                            <canvas id="purposeChart"></canvas>
-                                        </div>
-                                    </div>
+                        <div class="col-md-6">
+                            <a href="{{ url_for('sit_in_reports') }}" class="card h-100 text-decoration-none">
+                                <div class="card-body">
+                                    <h5><i class="fas fa-chart-bar"></i> Reports</h5>
+                                    <p class="text-muted">View detailed sit-in reports and analytics</p>
                                 </div>
-                            </div>
+                            </a>
                         </div>
                     </div>
                 </div>
-            </table>
+            </div>
+
+            <!-- Statistics Card -->
+            <div class="card custom-card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Quick Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="stat-card bg-primary bg-opacity-10 p-3 rounded">
+                                <h3 id="totalStudents">0</h3>
+                                <p class="mb-0">Total Students</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="stat-card bg-success bg-opacity-10 p-3 rounded">
+                                <h3 id="activeSitins">0</h3>
+                                <p class="mb-0">Active Sit-ins</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="stat-card bg-info bg-opacity-10 p-3 rounded">
+                                <h3 id="totalSitins">0</h3>
+                                <p class="mb-0">Total Sit-ins</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Chart Section -->
+                    <div class="mt-4">
+                        <h5 class="mb-3">Programming Languages Used</h5>
+                        <canvas id="languageChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column (4 columns wide) -->
+        <div class="col-lg-4">
+            <!-- Announcements Card -->
+            <div class="card custom-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Announcements</h5>
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#announcementModal">
+                        <i class="fas fa-plus"></i> New
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="announcementsList">
+                        <p class="text-center text-muted">Loading announcements...</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -304,25 +324,25 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="activateSitInForm">
+                <form id="sitInForm">
                     <div class="mb-3">
                         <label class="form-label">Student ID:</label>
                         <input type="text" id="studentId" name="student_id" class="form-control" readonly required>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Student Name:</label>
-                        <input type="text" id="studentFullName" class="form-control" readonly required>
+                        <input type="text" id="studentFullName" class="form-control" readonly>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Purpose:</label>
-                        <select class="form-control" name="purpose" multiple required>
+                        <select class="form-control" id="purpose" name="purpose" multiple required>
                             <!-- Will be populated dynamically -->
                         </select>
                         <small class="text-muted">Hold Ctrl/Cmd to select multiple languages</small>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Lab:</label>
-                        <select id="roomDropdown" class="form-control" name="room_number" required>
+                        <select id="roomNumber" class="form-control" name="room_number" required>
                             <option value="">Select a Lab</option>
                         </select>
                     </div>
@@ -331,7 +351,7 @@
                         <input type="text" id="remainingSessions" class="form-control" readonly>
                     </div>                    
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-user-check"></i> Activate Sit-in
+                        <i class="fas fa-user-check"></i> Activate Session
                     </button>
                 </form>
             </div>
@@ -364,17 +384,65 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+document.addEventListener("DOMContentLoaded", function () {
+    async function fetchData() {
+        try {
+            const response = await fetch('/get_data'); // Fetch from Flask API
+            const data = await response.json();
+            console.log("Fetched Data:", data); // Debugging output
+
+            if (!data || Object.keys(data).length === 0) {
+                console.error("No data available for chart");
+                return;
+            }
+
+            const labels = Object.keys(data);
+            const values = Object.values(data);
+
+            const ctx = document.getElementById('languageChart');
+            if (!ctx) {
+                console.error("Canvas element #languageChart not found");
+                return;
+            }
+
+            new Chart(ctx.getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Programming Languages',
+                        data: values,
+                        backgroundColor: [
+                            'red', 'blue', 'green', 'orange', 'purple', 'pink',
+                            'yellow', 'brown', 'cyan', 'magenta', 'grey', 'lime',
+                            'teal', 'indigo', 'gold', 'navy'
+                        ]
+                    }]
+                }
+            });
+
+        } catch (error) {
+            console.error("Error fetching chart data:", error);
+        }
+    }
+
+    fetchData();
+});
+
 document.addEventListener("DOMContentLoaded", function() {
     // Initialize modals and other functionality
     console.log("Initializing modals...");
     const searchModal = document.getElementById('searchModal');
     const sitInFormModal = document.getElementById('sitInFormModal');
+    const announcementModal = document.getElementById('announcementModal');
     console.log("Search modal exists:", !!searchModal);
     console.log("SitIn form modal exists:", !!sitInFormModal);
+    console.log("Announcement modal exists:", !!announcementModal);
     
     // Initialize all modals
-    const modals = [searchModal, sitInFormModal];
+    const modals = [searchModal, sitInFormModal, announcementModal];
     modals.forEach(modal => {
         if (modal) {
             new bootstrap.Modal(modal);
@@ -383,7 +451,6 @@ document.addEventListener("DOMContentLoaded", function() {
     });
     
     // Load initial data
-    fetchRooms();
     loadProgrammingLanguages();
     loadStatistics();
     loadAnnouncements();
@@ -441,105 +508,179 @@ document.addEventListener("DOMContentLoaded", function() {
             });
     }
 
-    function handleSearchResultClick(studentId, fullName) {
-    console.log("Clicked student:", studentId, fullName);
+    // Attach event listener for search
+    document.getElementById("searchInput").addEventListener("input", searchStudent);
 
+    // Handle sit-in form submission
+    document.getElementById('sitInForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const studentId = document.getElementById('studentId').value;
+        const purpose = Array.from(document.getElementById('purpose').selectedOptions).map(opt => opt.value).join(',');
+        const roomNumber = document.getElementById('roomNumber').value;
+        
+        if (!studentId || !purpose || !roomNumber) {
+            alert('Please fill in all required fields');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('student_id', studentId);
+        formData.append('purpose', purpose);
+        formData.append('room_number', roomNumber);
+        
+        fetch('/admin/activate_sitin', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert(data.error || 'Error activating session');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error submitting form');
+        });
+    });
+
+    // Handle announcement form submission
+    document.getElementById('announcementForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const title = document.getElementById('announcementTitle').value;
+        const content = document.getElementById('announcementContent').value;
+        
+        if (!title || !content) {
+            alert('Please fill in all fields');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('content', content);
+        
+        fetch('/post_announcement', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Announcement posted successfully!');
+                // Close the modal
+                bootstrap.Modal.getInstance(document.getElementById('announcementModal')).hide();
+                // Clear the form
+                document.getElementById('announcementForm').reset();
+                // Reload announcements
+                loadAnnouncements();
+            } else {
+                alert('Error: ' + (data.error || 'Failed to post announcement'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error posting announcement');
+        });
+    });
+});
+
+function handleSearchResultClick(studentId, fullName) {
+    console.log("Clicked student:", studentId, fullName);
+    
     // Set form values
     document.getElementById('studentId').value = studentId;
     document.getElementById('studentFullName').value = fullName;
-
-    // Fetch and display remaining sessions
+    
+    // Fetch remaining sessions
     fetch(`/get_student_remaining_sessions/${studentId}`)
         .then(response => response.json())
         .then(data => {
             if (data.remaining_sessions !== undefined) {
                 document.getElementById('remainingSessions').value = data.remaining_sessions;
             } else {
-                document.getElementById('remainingSessions').value = "N/A";
+                document.getElementById('remainingSessions').value = 'Error fetching sessions';
             }
         })
         .catch(error => {
-            console.error("Error fetching remaining sessions:", error);
-            document.getElementById('remainingSessions').value = "Error";
+            console.error('Error:', error);
+            document.getElementById('remainingSessions').value = 'Error fetching sessions';
         });
-
-    // Close search modal if open
+    
+    // Close search modal if it's open
     const searchModal = bootstrap.Modal.getInstance(document.getElementById('searchModal'));
     if (searchModal) {
         searchModal.hide();
     }
-
+    
     // Show the sit-in form modal
     setTimeout(() => {
         const sitInFormModal = new bootstrap.Modal(document.getElementById('sitInFormModal'));
         sitInFormModal.show();
+        
+        // Load programming languages and rooms when modal opens
+        loadProgrammingLanguages();
+        fetchRooms();
     }, 500);
 }
-    
-    // Attach event listener for search
-    document.getElementById("searchInput").addEventListener("input", searchStudent);
-});
 
-// Add this to your existing script
-document.addEventListener("DOMContentLoaded", function() {
-    // Load existing announcements
-    loadAnnouncements();
-
-    // Handle announcement form submission
-    const announcementForm = document.getElementById("announcementForm");
-    if (announcementForm) {
-        announcementForm.addEventListener("submit", function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            fetch("/post_announcement", {
-                method: "POST",
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert("Announcement posted successfully!");
-                    this.reset();
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('announcementModal'));
-                    modal.hide();
-                    loadAnnouncements();
-                } else {
-                    alert("Error posting announcement: " + data.error);
-                }
-            })
-            .catch(error => {
-                console.error("Error:", error);
-                alert("Error posting announcement");
-            });
-        });
-    }
-});
-
-function loadAnnouncements() {
-    fetch("/get_announcements")
+function loadProgrammingLanguages() {
+    fetch('/get_programming_languages')
         .then(response => response.json())
         .then(data => {
-            const announcementsList = document.getElementById("announcementsList");
-            if (data.announcements && data.announcements.length > 0) {
-                announcementsList.innerHTML = data.announcements.map(announcement => `
-                    <div class="announcement-item mb-3 p-3 border rounded">
-                        <h5>${announcement.title}</h5>
-                        <p>${announcement.content}</p>
-                        <small class="text-muted">Posted on: ${new Date(announcement.created_at).toLocaleString()}</small>
-                    </div>
-                `).join('');
-            } else {
-                announcementsList.innerHTML = '<p class="text-center text-muted">No announcements available.</p>';
+            const purposeSelect = document.getElementById('purpose');
+            if (!purposeSelect) {
+                console.error('Purpose select element not found');
+                return;
+            }
+            
+            purposeSelect.innerHTML = ''; // Clear existing options
+            
+            if (data.languages && Array.isArray(data.languages)) {
+                data.languages.forEach(lang => {
+                    const option = document.createElement('option');
+                    option.value = lang;
+                    option.textContent = lang;
+                    purposeSelect.appendChild(option);
+                });
             }
         })
         .catch(error => {
-            console.error("Error loading announcements:", error);
-            announcementsList.innerHTML = '<p class="text-center text-danger">Error loading announcements.</p>';
+            console.error('Error loading languages:', error);
+            alert('Error loading programming languages');
         });
 }
 
-let purposeChart = null;
+function fetchRooms() {
+    fetch("/get_labs")
+        .then(response => response.json())
+        .then(data => {
+            const roomSelect = document.getElementById("roomNumber");
+            if (!roomSelect) {
+                console.error('Room select element not found');
+                return;
+            }
+            
+            roomSelect.innerHTML = "<option value=''>Select a Lab</option>";
+            
+            if (data.labs && Array.isArray(data.labs)) {
+                data.labs.forEach(lab => {
+                    const option = document.createElement('option');
+                    option.value = lab.roomNumber;
+                    option.textContent = `${lab.roomNumber} (Capacity: ${lab.capacity})`;
+                    roomSelect.appendChild(option);
+                });
+            }
+        })
+        .catch(error => {
+            console.error("Error fetching rooms:", error);
+            alert('Error loading available rooms');
+        });
+}
 
 function loadStatistics() {
     fetch('/get_admin_statistics')
@@ -613,35 +754,27 @@ function updatePurposeChart(purposeStats) {
     });
 }
 
-function loadProgrammingLanguages() {
-    fetch('/get_programming_languages')
+function loadAnnouncements() {
+    fetch("/get_announcements")
         .then(response => response.json())
         .then(data => {
-            const purposeSelects = document.querySelectorAll('select[name="purpose"]');
-            purposeSelects.forEach(select => {
-                select.innerHTML = data.languages.map(lang => 
-                    `<option value="${lang}">${lang}</option>`
-                ).join('');
-            });
+            const announcementsList = document.getElementById("announcementsList");
+            if (data.announcements && data.announcements.length > 0) {
+                announcementsList.innerHTML = data.announcements.map(announcement => `
+                    <div class="announcement-item mb-3 p-3 border rounded">
+                        <h5>${announcement.title}</h5>
+                        <p>${announcement.content}</p>
+                        <small class="text-muted">Posted on: ${new Date(announcement.created_at).toLocaleString()}</small>
+                    </div>
+                `).join('');
+            } else {
+                announcementsList.innerHTML = '<p class="text-center text-muted">No announcements available.</p>';
+            }
         })
-        .catch(error => console.error('Error loading languages:', error));
-}
-
-function fetchRooms() {
-    fetch("/get_labs")
-        .then(response => response.json())
-        .then(data => {
-            let roomDropdown = document.getElementById("roomDropdown");
-            roomDropdown.innerHTML = "<option value=''>Select a Room</option>";
-
-            data.labs.forEach(lab => {
-                let option = document.createElement("option");
-                option.value = lab.roomNumber;
-                option.textContent = lab.roomNumber;
-                roomDropdown.appendChild(option);
-            });
-        })
-        .catch(error => console.error("Error fetching rooms:", error));
+        .catch(error => {
+            console.error("Error loading announcements:", error);
+            announcementsList.innerHTML = '<p class="text-center text-danger">Error loading announcements.</p>';
+        });
 }
 
 // Update All Remaining Sessions
