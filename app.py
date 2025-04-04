@@ -3,6 +3,8 @@ from flask import Flask, request, redirect, url_for, session, render_template, f
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime, date
 import pymysql
+import os
+from werkzeug.utils import secure_filename
 registration_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # Add this at the top of your app.py with your other constants
@@ -22,6 +24,17 @@ DB_CONFIG = {
     "database": "SYSARCH",
     "port": 3306
 }
+
+# Configure upload folder
+UPLOAD_FOLDER = os.path.join('static', 'uploads', 'profile_photos')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Create upload directory if it doesn't exist
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 #Index route
 @app.route('/', methods=['GET', 'POST'])
@@ -415,66 +428,64 @@ def sit_in_records():
 
 @app.route('/sit_in_history', methods=['GET'])
 def sit_in_history():
-    """Fetch and categorize sit-in reservations for the logged-in student using MySQL."""
-    username = session.get('username')  # Ensure the student is logged in
-    if not username:
-        return jsonify({"error": "Unauthorized"}), 403  # Return error if not logged in
-
+    """Fetch sit-in history for the logged-in student from the sit_in table."""
+    if 'username' not in session:
+        flash("Please log in first.", "danger")
+        return redirect(url_for('login_dashboard'))
+    
+    username = session.get('username')
+    student_id = session.get('user_id')  # Should be storing the student ID in session
+    
+    if not student_id:
+        # If user_id is not in session, try to get it from the database
+        try:
+            conn = mysql.connector.connect(**DB_CONFIG)
+            cursor = conn.cursor(dictionary=True)
+            
+            cursor.execute("SELECT id FROM students WHERE username = %s", (username,))
+            student = cursor.fetchone()
+            
+            if student:
+                student_id = student['id']
+            else:
+                flash("Student record not found.", "danger")
+                return redirect(url_for('student_dashboard'))
+                
+        except mysql.connector.Error as e:
+            flash(f"Database error: {e}", "danger")
+            return redirect(url_for('student_dashboard'))
+        finally:
+            if 'cursor' in locals():
+                cursor.close()
+            if 'conn' in locals():
+                conn.close()
+    
     try:
         # Connect to MySQL database
-        conn = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="",
-            database="SYSARCH"
-        )
+        conn = mysql.connector.connect(**DB_CONFIG)
         cursor = conn.cursor(dictionary=True)
 
-        # Fetch all reservations of the logged-in student
+        # Fetch all sit-in records for the logged-in student
         cursor.execute("""
-            SELECT datetime, lab_id, status 
-            FROM reservations 
-            WHERE username = %s
-            ORDER BY datetime ASC
-        """, (username,))
-        sit_in_records = cursor.fetchall()
-
-        # Get current timestamp
-        now = datetime.now()
-
-        # Categorize reservations into old, ongoing, and upcoming
-        old_reservations = []
-        ongoing_reservations = []
-        upcoming_reservations = []
-
-        for record in sit_in_records:
-            record_datetime = record["datetime"]
-
-            reservation_data = {
-                "datetime": record_datetime.strftime('%Y-%m-%d %H:%M:%S'),
-                "lab_id": record["lab_id"],
-                "status": record["status"]
-            }
-
-            if record_datetime < now:  # Past reservations
-                old_reservations.append(reservation_data)
-            elif record_datetime.date() == now.date():  # Same day = Ongoing
-                ongoing_reservations.append(reservation_data)
-            else:  # Future reservations
-                upcoming_reservations.append(reservation_data)
+            SELECT id, student_id, purpose, room_number, login_time, logout_time, is_activated, activation_time 
+            FROM sit_in 
+            WHERE student_id = %s
+            ORDER BY login_time DESC
+        """, (student_id,))
+        
+        history = cursor.fetchall()
+        
+        return render_template('sit_in_history.html', history=history)
 
     except mysql.connector.Error as e:
-        return jsonify({"error": f"Database error: {e}"}), 500
+        flash(f"Database error: {e}", "danger")
+        return redirect(url_for('student_dashboard'))
     finally:
         # Ensure connection is closed
-        cursor.close()
-        conn.close()
-
-    return jsonify({
-        "old_reservations": old_reservations,
-        "ongoing_reservations": ongoing_reservations,
-        "upcoming_reservations": upcoming_reservations
-    })
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
 
 @app.route('/create_reservation_table')
 def create_reservation_table():
@@ -772,13 +783,63 @@ def edit_student_record():
             yearlevel = request.form.get('yearlevel')
             email = request.form.get('email')
 
-            # Update student record
-            cursor.execute("""
-                UPDATE students 
-                SET firstname=%s, lastname=%s, midname=%s, 
-                    course=%s, yearlevel=%s, email=%s
-                WHERE username=%s
-            """, (firstname, lastname, midname, course, yearlevel, email, username))
+            # Handle photo upload
+            if 'photo' in request.files:
+                photo = request.files['photo']
+                if photo and photo.filename and allowed_file(photo.filename):
+                    try:
+                        # Create a unique filename with timestamp
+                        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                        filename = secure_filename(f"{username}_{timestamp}_{photo.filename}")
+                        
+                        # Ensure the upload directory exists
+                        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+                        
+                        # Full path for saving the file
+                        save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                        
+                        # Save the file
+                        photo.save(save_path)
+                        
+                        # Store the relative path in the database
+                        photo_path = os.path.join('static', 'uploads', 'profile_photos', filename)
+                        
+                        print(f"Photo saved at: {save_path}")
+                        print(f"Photo path stored in DB: {photo_path}")
+                        
+                        # Update student record with new photo path
+                        cursor.execute("""
+                            UPDATE students 
+                            SET firstname=%s, lastname=%s, midname=%s, 
+                                course=%s, yearlevel=%s, email=%s, photo_path=%s
+                            WHERE username=%s
+                        """, (firstname, lastname, midname, course, yearlevel, email, photo_path, username))
+                    except Exception as e:
+                        print(f"Error saving photo: {e}")
+                        flash(f"Error saving photo: {e}", "danger")
+                        # Update without changing photo
+                        cursor.execute("""
+                            UPDATE students 
+                            SET firstname=%s, lastname=%s, midname=%s, 
+                                course=%s, yearlevel=%s, email=%s
+                            WHERE username=%s
+                        """, (firstname, lastname, midname, course, yearlevel, email, username))
+                else:
+                    # Update without changing photo
+                    cursor.execute("""
+                        UPDATE students 
+                        SET firstname=%s, lastname=%s, midname=%s, 
+                            course=%s, yearlevel=%s, email=%s
+                        WHERE username=%s
+                    """, (firstname, lastname, midname, course, yearlevel, email, username))
+            else:
+                # Update without changing photo
+                cursor.execute("""
+                    UPDATE students 
+                    SET firstname=%s, lastname=%s, midname=%s, 
+                        course=%s, yearlevel=%s, email=%s
+                    WHERE username=%s
+                """, (firstname, lastname, midname, course, yearlevel, email, username))
             
             conn.commit()
             flash("Your record has been updated successfully!", "success")
@@ -787,7 +848,8 @@ def edit_student_record():
         # GET request - fetch student data
         cursor.execute("""
             SELECT id, username, firstname, lastname, midname,
-                   course, yearlevel, email, registration_date, remaining_sessions
+                   course, yearlevel, email, registration_date, remaining_sessions,
+                   photo_path
             FROM students 
             WHERE username = %s
         """, (username,))
@@ -1839,6 +1901,51 @@ def feedback_reports():
         flash('You must be an admin to access this page.', 'danger')
         return redirect(url_for('login_dashboard'))
     return render_template('feedback_reports.html')
+
+@app.route('/registered_students')
+def registered_students():
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT id, firstname, lastname, midname, course, yearlevel, email, registration_date 
+            FROM students 
+            ORDER BY registration_date DESC
+        """)
+        students = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return render_template('all_registered_students.html', students=students)
+    except Exception as e:
+        print(f"Error fetching students: {e}")
+        return "Error fetching student data", 500
+
+@app.route('/test_upload', methods=['GET', 'POST'])
+def test_upload():
+    if request.method == 'POST':
+        if 'photo' not in request.files:
+            return 'No file part'
+        
+        photo = request.files['photo']
+        if photo.filename == '':
+            return 'No selected file'
+        
+        if photo and allowed_file(photo.filename):
+            filename = secure_filename(photo.filename)
+            save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            photo.save(save_path)
+            return f'File uploaded successfully to {save_path}'
+    
+    return '''
+    <!doctype html>
+    <title>Test Upload</title>
+    <h1>Test File Upload</h1>
+    <form method=post enctype=multipart/form-data>
+      <input type=file name=photo>
+      <input type=submit value=Upload>
+    </form>
+    '''
 
 if __name__ == '__main__':
     import signal

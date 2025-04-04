@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .dashboard-container {
+        margin-top: 100px;
+        max-width: 1400px;
+        padding: 0 1rem;
+    }
+
+    .students-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+        color: white;
+        padding: 2rem;
+        border-radius: 16px;
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .students-header h1 {
+        color: white;
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 600;
+    }
+
+    .students-header .stats {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 0.75rem 1.5rem;
+        border-radius: 12px;
+        backdrop-filter: blur(10px);
+    }
+
+    .students-header .stats span {
+        font-size: 1.25rem;
+        font-weight: 500;
+    }
+
+    .back-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: white;
+        text-decoration: none;
+        padding: 0.75rem 1.25rem;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        font-weight: 500;
+    }
+
+    .back-button:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: translateX(-5px);
+        color: white;
+    }
+
+    .filter-section {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--box-shadow);
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .filter-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .filter-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .filter-control {
+        padding: 0.625rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 0.875rem;
+        color: var(--text-primary);
+        background: white;
+        transition: all 0.2s ease;
+    }
+
+    .filter-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .students-table-container {
+        background: white;
+        border-radius: 16px;
+        box-shadow: var(--box-shadow);
+        overflow: hidden;
+    }
+
+    .students-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .students-table th {
+        background: var(--light-bg);
+        color: var(--text-primary);
+        font-weight: 600;
+        text-align: left;
+        padding: 1rem;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .students-table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .students-table tbody tr {
+        transition: all 0.2s ease;
+    }
+
+    .students-table tbody tr:hover {
+        background: var(--light-bg);
+    }
+
+    .course-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .year-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        background: var(--secondary-color);
+        color: white;
+    }
+
+    @media (max-width: 768px) {
+        .students-header {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+        }
+
+        .students-table-container {
+            overflow-x: auto;
+        }
+    }
+</style>
+
+<div class="dashboard-container">
+    <div class="students-header">
+        <div>
+            <a href="{{ url_for('admin_dashboard') }}" class="back-button">
+                <i class="fas fa-arrow-left"></i>
+                Back to Dashboard
+            </a>
+            <h1 class="mt-4">Registered Students</h1>
+        </div>
+        <div class="stats">
+            Total Students: <span id="studentCount">{{ students|length }}</span>
+        </div>
+    </div>
+
+    <div class="filter-section">
+        <div class="filter-grid">
+            <div class="filter-item">
+                <label class="filter-label">Search</label>
+                <input type="text" id="searchFilter" class="filter-control" placeholder="Search by name or ID...">
+            </div>
+            <div class="filter-item">
+                <label class="filter-label">Course</label>
+                <select id="courseFilter" class="filter-control">
+                    <option value="">All Courses</option>
+                    <option value="BSCS">BSCS</option>
+                    <option value="BSIT">BSIT</option>
+                    <option value="BSIS">BSIS</option>
+                    <option value="BSECE">BSECE</option>
+                    <option value="BSCE">BSCE</option>
+                    <option value="BSEE">BSEE</option>
+                    <option value="BSA">BSA</option>
+                    <option value="BSBA">BSBA</option>
+                    <option value="BSN">BSN</option>
+                    <option value="BSED">BSED</option>
+                </select>
+            </div>
+            <div class="filter-item">
+                <label class="filter-label">Year Level</label>
+                <select id="yearFilter" class="filter-control">
+                    <option value="">All Years</option>
+                    <option value="1">1st Year</option>
+                    <option value="2">2nd Year</option>
+                    <option value="3">3rd Year</option>
+                    <option value="4">4th Year</option>
+                    <option value="5">5th Year</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="students-table-container">
+        <table class="students-table">
+            <thead>
+                <tr>
+                    <th>Student ID</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Middle Name</th>
+                    <th>Course</th>
+                    <th>Year Level</th>
+                    <th>Email</th>
+                    <th>Registration Date</th>
+                </tr>
+            </thead>
+            <tbody id="studentsTableBody">
+                {% for student in students %}
+                <tr>
+                    <td>{{ student.id }}</td>
+                    <td>{{ student.firstname }}</td>
+                    <td>{{ student.lastname }}</td>
+                    <td>{{ student.midname or '-' }}</td>
+                    <td><span class="course-badge">{{ student.course }}</span></td>
+                    <td><span class="year-badge">{{ student.yearlevel }}th Year</span></td>
+                    <td>{{ student.email }}</td>
+                    <td>{{ student.registration_date.strftime('%Y-%m-%d %I:%M %p') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function filterTable() {
+    const search = document.getElementById('searchFilter').value.toLowerCase();
+    const course = document.getElementById('courseFilter').value;
+    const year = document.getElementById('yearFilter').value;
+    
+    const rows = document.getElementById('studentsTableBody').getElementsByTagName('tr');
+    let visibleCount = 0;
+    
+    for (let row of rows) {
+        const id = row.cells[0].textContent.toLowerCase();
+        const firstName = row.cells[1].textContent.toLowerCase();
+        const lastName = row.cells[2].textContent.toLowerCase();
+        const studentCourse = row.cells[4].textContent;
+        const yearLevel = row.cells[5].textContent.split('th')[0];
+        
+        const matchesSearch = id.includes(search) || 
+                            firstName.includes(search) || 
+                            lastName.includes(search);
+        const matchesCourse = !course || studentCourse.includes(course);
+        const matchesYear = !year || yearLevel === year;
+        
+        if (matchesSearch && matchesCourse && matchesYear) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    }
+    
+    document.getElementById('studentCount').textContent = visibleCount;
+}
+
+// Add event listeners for filter changes
+document.getElementById('searchFilter').addEventListener('input', filterTable);
+document.getElementById('courseFilter').addEventListener('change', filterTable);
+document.getElementById('yearFilter').addEventListener('change', filterTable);
+</script>
+{% endblock %} 

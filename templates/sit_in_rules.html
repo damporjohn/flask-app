@@ -4,90 +4,149 @@
 
 {% block content %}
 <style>
+    :root {
+        --gunmetal-1: #293438;
+        --gunmetal-2: #242C30;
+        --gunmetal-3: #1D2429;
+        --gunmetal-4: #0F1314;
+        --gunmetal-5: #010100;
+        --text-light: #ffffff;
+        --text-muted: #cccccc;
+        --accent: #4db6ac;
+        --danger: #f44336;
+        --success: #4caf50;
+        --warning: #ff9800;
+        --primary: #0277bd;
+        --border-color: rgba(255,255,255,0.05);
+        --box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+    
     body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         margin: 0;
         display: flex;
-        background: #f0f2f5;
+        background: var(--gunmetal-4);
+        color: var(--text-light);
     }
+    
     .sidebar {
         height: 100%;
         width: 250px;
         position: fixed;
         top: 80px; /* Account for fixed header */
         left: -250px;
-        background-color: #fff;
-        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        background-color: var(--gunmetal-3);
+        box-shadow: 0 0 15px rgba(0,0,0,0.3);
         transition: 0.3s;
         z-index: 1020;
         padding-top: 20px;
+        border-right: 1px solid var(--border-color);
     }
+    
     .sidebar.active {
         left: 0;
     }
+    
     .sidebar a {
         padding: 12px 25px;
         display: block;
-        color: #050505;
+        color: var(--text-light);
         text-decoration: none;
         transition: 0.3s;
         font-size: 14px;
         margin: 5px 15px;
         border-radius: 8px;
     }
+    
     .sidebar a:hover {
-        background: #f0f2f5;
-        color: #0d6efd;
+        background: var(--gunmetal-2);
+        color: var(--accent);
+        transform: translateX(5px);
     }
+    
     .sidebar a i {
         width: 20px;
         margin-right: 10px;
+        color: var(--text-muted);
     }
+    
+    .sidebar a:hover i {
+        color: var(--accent);
+    }
+    
     .sidebar .btn-danger {
         margin: 15px 25px;
         text-align: center;
+        background-color: var(--danger);
     }
+    
     .sidebar .btn-danger:hover {
-        background-color: #dc3545;
+        background-color: #c62828;
         color: white;
     }
+    
     .content {
         margin-left: 60px;
-        padding: 20px;
+        padding: 30px;
+        margin-top: 100px;
         display: flex;
+        flex-direction: column;
         gap: 20px;
+        width: 100%;
+        min-height: calc(100vh - 80px);
     }
+    
     .hamburger-btn {
         position: fixed;
         left: 20px;
         top: 90px;
         z-index: 1025;
-        background: #fff;
+        background: var(--gunmetal-3);
+        color: var(--text-light);
         border: none;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        border-radius: 8px;
         padding: 10px;
         cursor: pointer;
+        transition: all 0.2s ease;
     }
-    .table th, .table td {
-        text-align: left;
-        padding: 12px;
-        border-bottom: 1px solid #e4e6eb;
+    
+    .hamburger-btn:hover {
+        background: var(--gunmetal-2);
+        transform: scale(1.05);
     }
+    
     .card {
-        background: white;
+        background: linear-gradient(145deg, var(--gunmetal-2), var(--gunmetal-3));
         border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        padding: 25px;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
         margin-bottom: 20px;
+        border: 1px solid var(--border-color);
     }
-    h2 {
-        color: #050505;
-        font-size: 20px;
-        margin-bottom: 15px;
+    
+    h1 {
+        color: var(--text-light);
+        font-size: 28px;
+        margin-bottom: 25px;
+        font-weight: 500;
+        position: relative;
+        padding-bottom: 12px;
     }
+    
+    h1:after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 60px;
+        height: 3px;
+        background: var(--accent);
+        border-radius: 3px;
+    }
+    
     .btn-danger {
-        background-color: #ff4444;
+        background-color: var(--danger);
         border: none;
         border-radius: 8px;
         padding: 10px 20px;
@@ -96,31 +155,43 @@
         cursor: pointer;
         transition: 0.3s;
     }
+    
     .btn-danger:hover {
-        background-color: #cc0000;
+        background-color: #c62828;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
+    
     .text-center {
         text-align: center;
     }
+    
     .text-danger {
-        color: #ff4444;
+        color: var(--danger);
     }
-    ul {
-        list-style-type: none;
-        padding: 0;
-    }
-    ul li {
-        padding: 10px 0;
-        border-bottom: 1px solid #e4e6eb;
-    }
-    ul li:last-child {
-        border-bottom: none;
-    }
+    
     .main-content {
         flex: 1;
     }
-    .right-sidebar {
-        width: 300px;
+    
+    ol {
+        padding-left: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    ol li {
+        margin-bottom: 1rem;
+        line-height: 1.6;
+    }
+    
+    .rules-container {
+        background: linear-gradient(145deg, var(--gunmetal-2), var(--gunmetal-3));
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: var(--box-shadow);
+        border: 1px solid var(--border-color);
+        max-width: 800px;
+        margin: 0 auto;
     }
 </style>
 
@@ -137,30 +208,54 @@
     <a href="{{ url_for('lab_rules') }}"><i class="fas fa-exclamation-circle"></i> Lab Rules & Regulations</a>
     <a href="{{ url_for('sit_in_history') }}"><i class="fas fa-history"></i> Sit-in History</a>
     <a href="{{ url_for('make_reservation') }}"><i class="fas fa-calendar-plus"></i> Reservation</a>
-    <a href="#" onclick="logoutSitIn()"><i class="fas fa-sign-out-alt"></i> End Session</a>
-    <a href="{{ url_for('logout') }}" class="btn btn-danger mt-3"><i class="fas fa-power-off"></i> Logout</a>
 </div>
 
 <div class="content" id="content">
-    <h1>Sit-in Rules</h1>
-    <ol>
-        <li>Students must register before attending a sit-in session.</li>
-        <li>Respect the lab environment and other students.</li>
-        <li>No food or drinks allowed inside the lab.</li>
-        <li>Attendance must be verified before leaving.</li>
-    </ol>
+    <div class="rules-container">
+        <h1>Sit-in Rules</h1>
+        <ol>
+            <li>Students must register before attending a sit-in session.</li>
+            <li>Respect the lab environment and other students.</li>
+            <li>No food or drinks allowed inside the lab.</li>
+            <li>Attendance must be verified before leaving.</li>
+        </ol>
+    </div>
 </div>
 
 <script>
     function toggleSidebar() {
         let sidebar = document.getElementById("sidebar");
         let content = document.getElementById("content");
-        if (sidebar.style.left === "0px") {
-            sidebar.style.left = "-250px";
-            content.style.marginLeft = "0";
+        if (sidebar.classList.contains("active")) {
+            sidebar.classList.remove("active");
+            content.style.marginLeft = "60px";
         } else {
-            sidebar.style.left = "0px";
-            content.style.marginLeft = "250px";
+            sidebar.classList.add("active");
+            content.style.marginLeft = "260px";
+        }
+    }
+    
+    function logoutSitIn() {
+        if (confirm("Are you sure you want to end your current sit-in session?")) {
+            fetch('/student/logout_sitin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Sit-in session ended successfully.");
+                    window.location.reload();
+                } else {
+                    alert("Error: " + (data.error || "Failed to end sit-in session."));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("An error occurred while ending the sit-in session.");
+            });
         }
     }
 </script>

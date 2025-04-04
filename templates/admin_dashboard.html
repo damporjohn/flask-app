@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 
-<!-- Add Chart.js library -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 {% block content %}
@@ -20,7 +19,7 @@
         flex-direction: column;
     }
     .header {
-        margin-top: 90px;
+        margin-top: 100px;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -185,10 +184,11 @@
 </style>
 
 <!-- Header -->
-<div class="header">
+<div class="header" style="margin-top: 100px;">
     Admin Dashboard
     <div class="nav-links">
         <a href="{{ url_for('admin_dashboard') }}">Home</a>
+        <a href="{{ url_for('registered_students') }}">Registered Students</a>
         <a data-bs-toggle="modal" data-bs-target="#searchModal">Search</a>
         <a href="{{ url_for('sit_in_records') }}">View Sit-in Records</a>
         <a href="{{ url_for('current_sit_in') }}">Sit In</a>
@@ -216,26 +216,6 @@
                             <p class="text-muted mb-0">College of Computer Studies</p>
                             <p class="text-muted mb-0">School Year: 2024-2025</p>
                             <p class="text-muted">{{ current_term }}</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Quick Actions -->
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <a href="{{ url_for('current_sit_in') }}" class="card h-100 text-decoration-none">
-                                <div class="card-body">
-                                    <h5><i class="fas fa-users"></i> Current Sit-Ins</h5>
-                                    <p class="text-muted">View and manage active sit-in sessions</p>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="col-md-6">
-                            <a href="{{ url_for('sit_in_reports') }}" class="card h-100 text-decoration-none">
-                                <div class="card-body">
-                                    <h5><i class="fas fa-chart-bar"></i> Reports</h5>
-                                    <p class="text-muted">View detailed sit-in reports and analytics</p>
-                                </div>
-                            </a>
                         </div>
                     </div>
                 </div>

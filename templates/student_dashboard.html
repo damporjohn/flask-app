@@ -2,12 +2,36 @@
 
 {% block content %}
 <style>
+    :root {
+        --gunmetal-1: #293438;
+        --gunmetal-2: #242C30;
+        --gunmetal-3: #1D2429;
+        --gunmetal-4: #0F1314;
+        --gunmetal-5: #010100;
+        --text-light: #ffffff;
+        --text-muted: #cccccc;
+        --accent: #4db6ac;
+        --danger: #f44336;
+        --success: #4caf50;
+        --warning: #ff9800;
+        --primary: #0277bd;
+        --border-color: rgba(255,255,255,0.05);
+        --box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        background: var(--gunmetal-4);
+        color: var(--text-light);
+    }
+
     .dashboard-container {
         display: grid;
         grid-template-columns: 1fr 300px;
         gap: 2rem;
         max-width: 1400px;
-        margin: 0 auto;
+        margin-top: 100px;
         padding: 0 1rem;
     }
 
@@ -17,12 +41,13 @@
         left: 0;
         height: calc(100vh - 80px);
         width: 250px;
-        background: #ffffff;
+        background: var(--gunmetal-3);
         box-shadow: var(--box-shadow);
         transform: translateX(-100%);
         transition: transform 0.3s ease;
         z-index: 1020;
         padding: 1.5rem 0;
+        border-right: 1px solid var(--border-color);
     }
 
     .sidebar.active {
@@ -33,7 +58,7 @@
         display: flex;
         align-items: center;
         padding: 0.75rem 1.5rem;
-        color: var(--text-primary);
+        color: var(--text-light);
         text-decoration: none;
         transition: all 0.2s ease;
         margin: 0.25rem 1rem;
@@ -42,19 +67,19 @@
     }
 
     .sidebar-link:hover {
-        background: var(--light-bg);
-        color: var(--primary-color);
+        background: var(--gunmetal-2);
+        color: var(--accent);
         transform: translateX(5px);
     }
 
     .sidebar-link i {
         width: 20px;
         margin-right: 12px;
-        color: var(--text-secondary);
+        color: var(--text-muted);
     }
 
     .sidebar-link:hover i {
-        color: var(--primary-color);
+        color: var(--accent);
     }
 
     .hamburger-btn {
@@ -62,7 +87,8 @@
         left: 20px;
         top: 90px;
         z-index: 1025;
-        background: #ffffff;
+        background: var(--gunmetal-3);
+        color: var(--text-light);
         border: none;
         box-shadow: var(--box-shadow);
         border-radius: 8px;
@@ -72,23 +98,38 @@
     }
 
     .hamburger-btn:hover {
-        background: var(--light-bg);
+        background: var(--gunmetal-2);
         transform: scale(1.05);
     }
 
     .student-info-card {
-        background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-        color: white;
+        background: linear-gradient(135deg, var(--gunmetal-1), var(--gunmetal-3));
+        color: var(--text-light);
         border-radius: 16px;
         padding: 2rem;
         margin-bottom: 2rem;
+        box-shadow: var(--box-shadow);
+        border: 1px solid var(--border-color);
     }
 
     .student-info-card h2 {
-        color: white;
+        color: var(--text-light);
         font-size: 1.5rem;
         margin-bottom: 1.5rem;
         font-weight: 600;
+        position: relative;
+        padding-bottom: 10px;
+    }
+
+    .student-info-card h2:after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 50px;
+        height: 3px;
+        background: var(--accent);
+        border-radius: 3px;
     }
 
     .info-grid {
@@ -98,16 +139,18 @@
     }
 
     .info-item {
-        background: rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.05);
         padding: 1rem;
         border-radius: 12px;
         backdrop-filter: blur(10px);
+        border: 1px solid var(--border-color);
     }
 
     .info-item h6 {
-        color: rgba(255, 255, 255, 0.8);
+        color: var(--accent);
         font-size: 0.875rem;
         margin-bottom: 0.5rem;
+        font-weight: 500;
     }
 
     .info-item p {
@@ -117,10 +160,30 @@
     }
 
     .feedback-card {
-        background: white;
+        background: linear-gradient(145deg, var(--gunmetal-2), var(--gunmetal-3));
         border-radius: 16px;
         padding: 2rem;
         box-shadow: var(--box-shadow);
+        border: 1px solid var(--border-color);
+    }
+
+    .feedback-card h3 {
+        color: var(--text-light);
+        margin-bottom: 1.5rem;
+        position: relative;
+        padding-bottom: 10px;
+        font-weight: 500;
+    }
+
+    .feedback-card h3:after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 40px;
+        height: 3px;
+        background: var(--accent);
+        border-radius: 3px;
     }
 
     .rating {
@@ -138,21 +201,83 @@
     .rating label {
         cursor: pointer;
         font-size: 2rem;
-        color: #d1d5db;
+        color: var(--text-muted);
         transition: all 0.2s ease;
     }
 
     .rating label:hover,
     .rating label:hover ~ label,
     .rating input:checked ~ label {
-        color: #fbbf24;
+        color: #ffc107;
+    }
+
+    .form-control {
+        background: var(--gunmetal-3);
+        border: 1px solid var(--border-color);
+        color: var(--text-light);
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(77, 182, 172, 0.25);
+        outline: none;
+    }
+
+    .form-label {
+        color: var(--text-light);
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+    }
+
+    .btn-custom-primary {
+        background: var(--accent);
+        color: var(--gunmetal-5);
+        border: none;
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .btn-custom-primary:hover {
+        background: #3da599;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .right-sidebar {
+        top: 100px;
+        width: 380px;
     }
 
     .announcements-card {
-        background: white;
+        background: linear-gradient(145deg, var(--gunmetal-2), var(--gunmetal-3));
         border-radius: 16px;
         padding: 1.5rem;
         box-shadow: var(--box-shadow);
+        border: 1px solid var(--border-color);
+    }
+
+    .announcements-card h3 {
+        color: var(--text-light);
+        margin-bottom: 1.5rem;
+        position: relative;
+        padding-bottom: 10px;
+        font-weight: 500;
+    }
+
+    .announcements-card h3:after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 40px;
+        height: 3px;
+        background: var(--accent);
+        border-radius: 3px;
     }
 
     .announcement-item {
@@ -162,7 +287,7 @@
     }
 
     .announcement-item:hover {
-        background: var(--light-bg);
+        background: rgba(255,255,255,0.03);
     }
 
     .announcement-item:last-child {
@@ -170,42 +295,64 @@
     }
 
     .announcement-item h5 {
-        color: var(--text-primary);
+        color: var(--text-light);
         font-size: 1rem;
         margin-bottom: 0.5rem;
     }
 
     .announcement-item p {
-        color: var(--text-secondary);
+        color: var(--text-muted);
         font-size: 0.875rem;
         margin-bottom: 0.5rem;
     }
 
     .announcement-item small {
-        color: var(--text-secondary);
+        color: var(--text-muted);
         font-size: 0.75rem;
     }
 
     .sessions-card {
-        background: white;
+        background: linear-gradient(145deg, var(--gunmetal-2), var(--gunmetal-3));
         border-radius: 16px;
         padding: 1.5rem;
         box-shadow: var(--box-shadow);
         margin-top: 1.5rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .sessions-card h3 {
+        color: var(--text-light);
+        margin-bottom: 1rem;
+        position: relative;
+        padding-bottom: 10px;
+        font-weight: 500;
+    }
+
+    .sessions-card h3:after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 40px;
+        height: 3px;
+        background: var(--accent);
+        border-radius: 3px;
     }
 
     .sessions-count {
-        font-size: 2rem;
+        font-size: 2.5rem;
         font-weight: 600;
-        color: var(--primary-color);
+        color: var(--accent);
         text-align: center;
         margin: 1rem 0;
     }
 
     .modal-content {
+        background: var(--gunmetal-2);
         border-radius: 16px;
-        border: none;
+        border: 1px solid var(--border-color);
         box-shadow: var(--box-shadow);
+        color: var(--text-light);
     }
 
     .modal-header {
@@ -220,6 +367,51 @@
     .modal-footer {
         border-top: 1px solid var(--border-color);
         padding: 1.5rem;
+    }
+
+    .profile-photo-container {
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    .profile-photo {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid var(--accent);
+    }
+
+    .btn-custom-secondary {
+        background: var(--gunmetal-1);
+        color: var(--text-light);
+        border: 1px solid var(--border-color);
+        transition: all 0.2s ease;
+    }
+
+    .btn-custom-secondary:hover {
+        background: var(--gunmetal-3);
+        color: var(--accent);
+    }
+
+    .text-muted {
+        color: var(--text-muted) !important;
+    }
+
+    .text-warning {
+        color: var(--warning) !important;
+    }
+
+    .text-success {
+        color: var(--success) !important;
+    }
+
+    .bg-warning {
+        background-color: var(--warning) !important;
+    }
+
+    .bg-success {
+        background-color: var(--success) !important;
     }
 </style>
 
@@ -256,6 +448,15 @@
         <div class="student-info-card">
             <h2>Student Information</h2>
             {% if student %}
+            <div class="profile-photo-container">
+                {% if student.photo_path %}
+                <img src="{{ url_for('static', filename='uploads/profile_photos/' + student.photo_path.split('/')[-1]) }}" 
+                     alt="Profile Photo" class="profile-photo" id="profilePhoto">
+                {% else %}
+                <img src="{{ url_for('static', filename='images/default_profile.png') }}" 
+                     alt="Profile Photo" class="profile-photo" id="profilePhoto">
+                {% endif %}
+            </div>
             <div class="info-grid">
                 <div class="info-item">
                     <h6>ID Number</h6>
@@ -412,14 +613,14 @@
         loadAnnouncements();
         loadAvailableRooms();
         
-        const needsActivation = {% if session.get('needs_activation') %}true{% else %}false{% endif %};
-        const needsLogin = {% if session.get('needs_login') %}true{% else %}false{% endif %};
+        const needsActivation = "{{ session.get('needs_activation', False)|tojson }}";
+        const needsLogin = "{{ session.get('needs_login', False)|tojson }}";
         
-        if (needsActivation) {
+        if (needsActivation === "true") {
             new bootstrap.Modal(document.getElementById('activationModal')).show();
         }
         
-        if (needsLogin) {
+        if (needsLogin === "true") {
             new bootstrap.Modal(document.getElementById('loginSuccessModal')).show();
         }
     });
@@ -496,5 +697,29 @@
             alert('Error submitting feedback');
         });
     });
+    
+    function logoutSitIn() {
+        if (confirm("Are you sure you want to end your current sit-in session?")) {
+            fetch('/student/logout_sitin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Sit-in session ended successfully.");
+                    window.location.reload();
+                } else {
+                    alert("Error: " + (data.error || "Failed to end sit-in session."));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("An error occurred while ending the sit-in session.");
+            });
+        }
+    }
 </script>
 {% endblock %}
