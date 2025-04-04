@@ -726,6 +726,72 @@ def get_announcements():
         cursor.close()
         conn.close()
 
+def get_leaderboard():
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cursor = conn.cursor(dictionary=True)
+    
+    query = """
+        SELECT 
+            s.id,
+            s.firstname,
+            s.lastname,
+            s.course,
+            s.yearlevel,
+            COUNT(si.id) AS attendance_count
+        FROM students s
+        JOIN sit_in si ON s.id = si.student_id
+        GROUP BY s.id, s.firstname, s.lastname, s.course, s.yearlevel
+        ORDER BY attendance_count DESC
+        LIMIT 10;
+    """
+    
+    cursor.execute(query)
+    leaderboard = cursor.fetchall()
+    
+    cursor.close()
+    conn.close()
+    
+    return leaderboard
+
+@app.route("/leaderboard")
+def leaderboard():
+    students = get_leaderboard()
+    return render_template('leaderboard.html')
+
+@app.route("/leaderboard_data")
+def leaderboard_data():
+    students = get_leaderboard()
+    return jsonify(students)
+
+def get_lab_schedules():
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cursor = conn.cursor(dictionary=True)
+    
+    query = "SELECT * FROM lab_schedules;"
+    cursor.execute(query)
+    lab_schedules = cursor.fetchall()
+    
+    cursor.close()
+    conn.close()
+    
+    return lab_schedules
+
+@app.route("/lab_schedules")
+def lab_schedules():
+    schedules = get_lab_schedules()
+    return render_template("lab_schedules.html", schedules=schedules)
+
+
+
+
+
+
+
+
+
+
+
+
 @app.route('/student_dashboard')
 def student_dashboard():
     if 'username' not in session or session.get('role') != 'student':  
@@ -1946,6 +2012,109 @@ def test_upload():
       <input type=submit value=Upload>
     </form>
     '''
+
+@app.route('/award_points', methods=['POST'])
+def award_points():
+    if session.get('role') != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    data = request.json
+    student_id = data.get('student_id')
+    points = data.get('points', 0)
+    reason = data.get('reason', '')
+    
+    if not student_id or points <= 0:
+        return jsonify({"error": "Invalid data provided"}), 400
+        
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        # First check if student exists
+        cursor.execute("SELECT id, remaining_sessions FROM students WHERE id = %s", (student_id,))
+        student = cursor.fetchone()
+        
+        if not student:
+            return jsonify({"error": "Student not found"}), 404
+            
+        # Get current points for this student
+        cursor.execute("SELECT SUM(points) as total_points FROM student_rewards WHERE student_id = %s", (student_id,))
+        result = cursor.fetchone()
+        current_points = result['total_points'] if result['total_points'] else 0
+        
+        # Add new points record
+        cursor.execute("""
+            INSERT INTO student_rewards 
+            (student_id, points, reason, awarded_at) 
+            VALUES (%s, %s, %s, NOW())
+        """, (student_id, points, reason))
+        
+        # Calculate new total points and how many new sessions to add
+        new_total_points = current_points + points
+        new_sessions = new_total_points // 3
+        old_sessions = current_points // 3
+        sessions_to_add = new_sessions - old_sessions
+        
+        # Update remaining sessions if needed
+        if sessions_to_add > 0:
+            cursor.execute("""
+                UPDATE students
+                SET remaining_sessions = remaining_sessions + %s
+                WHERE id = %s
+            """, (sessions_to_add, student_id))
+            
+        conn.commit()
+        
+        return jsonify({
+            "success": True,
+            "points_added": points,
+            "total_points": new_total_points,
+            "sessions_added": sessions_to_add,
+            "new_remaining_sessions": student['remaining_sessions'] + sessions_to_add
+        })
+        
+    except mysql.connector.Error as e:
+        return jsonify({"error": str(e)}), 500
+        
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
+
+@app.route('/get_student_points')
+def get_student_points():
+    if session.get('role') != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get total points for each student
+        cursor.execute("""
+            SELECT 
+                student_id,
+                SUM(points) as total_points
+            FROM student_rewards
+            GROUP BY student_id
+        """)
+        
+        students = cursor.fetchall()
+        
+        return jsonify({
+            "success": True,
+            "students": students
+        })
+        
+    except mysql.connector.Error as e:
+        return jsonify({"error": str(e)}), 500
+        
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
 
 if __name__ == '__main__':
     import signal

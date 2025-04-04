@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    :root {
+        --gunmetal-1: #293438;
+        --gunmetal-2: #242C30;
+        --gunmetal-3: #1D2429;
+        --gunmetal-4: #0F1314;
+        --gunmetal-5: #010100;
+        --text-light: #ffffff;
+        --text-muted: #cccccc;
+        --accent: #4db6ac;
+        --danger: #f44336;
+        --success: #4caf50;
+        --warning: #ff9800;
+        --primary: #0277bd;
+        --border-color: rgba(255,255,255,0.05);
+        --box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+    
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        background: var(--gunmetal-4);
+        color: var(--text-light);
+    }
+    
+    .container {
+        max-width: 1000px;
+        margin: 100px auto 30px;
+        padding: 0 15px;
+    }
+    
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        margin-top: 260px;
+    }
+    
+    .back-button {
+        background: var(--gunmetal-3);
+        color: var(--text-light);
+        text-decoration: none;
+        padding: 10px 15px;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .back-button:hover {
+        background: var(--gunmetal-2);
+        transform: translateY(-2px);
+        box-shadow: var(--box-shadow);
+        color: var(--accent);
+    }
+    
+    h1 {
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0;
+        color: var(--text-light);
+    }
+    
+    .trophy-icon {
+        color: #FFD700;
+        font-size: 32px;
+        margin-right: 10px;
+    }
+    
+    .card {
+        background: linear-gradient(145deg, var(--gunmetal-2), var(--gunmetal-3));
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--box-shadow);
+        border: 1px solid var(--border-color);
+    }
+    
+    .card-header {
+        padding: 20px;
+        background: linear-gradient(135deg, var(--gunmetal-1), var(--gunmetal-3));
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .card-header h2 {
+        margin: 0;
+        font-size: 20px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .card-body {
+        padding: 0;
+    }
+    
+    .leaderboard-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .leaderboard-table th {
+        background: var(--gunmetal-3);
+        color: var(--accent);
+        text-align: left;
+        padding: 15px 20px;
+        font-weight: 500;
+        font-size: 14px;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .leaderboard-table td {
+        padding: 15px 20px;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-light);
+    }
+    
+    .leaderboard-table tr:hover td {
+        background-color: rgba(255,255,255,0.03);
+    }
+    
+    .leaderboard-table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .rank {
+        font-weight: 600;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+    }
+    
+    .rank-1 {
+        background: linear-gradient(45deg, #FFD700, #FFA500);
+        color: #000;
+    }
+    
+    .rank-2 {
+        background: linear-gradient(45deg, #C0C0C0, #A9A9A9);
+        color: #000;
+    }
+    
+    .rank-3 {
+        background: linear-gradient(45deg, #CD7F32, #8B4513);
+        color: #fff;
+    }
+    
+    .attendance-count {
+        font-weight: 600;
+        color: var(--accent);
+    }
+    
+    .loading {
+        text-align: center;
+        padding: 30px;
+        color: var(--text-muted);
+    }
+    
+    .loading i {
+        animation: spin 1s infinite linear;
+        font-size: 24px;
+        margin-bottom: 10px;
+    }
+    
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 5px 10px;
+        border-radius: 50px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .badge-primary {
+        background-color: var(--primary);
+        color: white;
+    }
+    
+    .bottom-button {
+        margin-top: 30px;
+        text-align: center;
+    }
+    
+    .dashboard-button {
+        background: var(--accent);
+        color: var(--gunmetal-5);
+        border: none;
+        border-radius: 8px;
+        padding: 12px 25px;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+    
+    .dashboard-button:hover {
+        background: #3da599;
+        transform: translateY(-3px);
+        box-shadow: var(--box-shadow);
+    }
+</style>
+
+<div class="container">
+    <div class="header">
+        <a href="{{ url_for('admin_dashboard') }}" class="back-button">
+            <i class="fas fa-arrow-left"></i>
+            Back to Dashboard
+        </a>
+        <h1><i class="fas fa-trophy trophy-icon"></i> Student Leaderboard</h1>
+        <span class="badge badge-primary">Top 10 Students</span>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h2>Attendance Leaders</h2>
+        </div>
+        <div class="card-body">
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Student ID</th>
+                        <th>Name</th>
+                        <th>Course</th>
+                        <th>Year Level</th>
+                        <th>Attendance Count</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboardBody">
+                    <tr>
+                        <td colspan="6" class="loading">
+                            <i class="fas fa-spinner"></i>
+                            <p>Loading leaderboard data...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="bottom-button">
+    <a href="{{ url_for('admin_dashboard') }}" class="dashboard-button">
+        <i class="fas fa-tachometer-alt"></i> Back to Dashboard
+    </a>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('/leaderboard_data')
+            .then(response => response.json())
+            .then(data => {
+                const leaderboardBody = document.getElementById('leaderboardBody');
+                
+                if (data.length === 0) {
+                    leaderboardBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center">
+                                <p>No data available</p>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                let html = '';
+                
+                data.forEach((student, index) => {
+                    const rank = index + 1;
+                    const rankClass = rank <= 3 ? `rank-${rank}` : '';
+                    
+                    html += `
+                        <tr>
+                            <td>
+                                <div class="rank ${rankClass}">${rank}</div>
+                            </td>
+                            <td>${student.id}</td>
+                            <td>${student.firstname} ${student.lastname}</td>
+                            <td>${student.course}</td>
+                            <td>${student.yearlevel}</td>
+                            <td><span class="attendance-count">${student.attendance_count}</span></td>
+                        </tr>
+                    `;
+                });
+                
+                leaderboardBody.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error fetching leaderboard data:', error);
+                document.getElementById('leaderboardBody').innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center">
+                            <p>Error loading leaderboard data. Please try again later.</p>
+                        </td>
+                    </tr>
+                `;
+            });
+    });
+</script>
+{% endblock %} 

@@ -204,10 +204,12 @@
 <div class="sidebar" id="sidebar">
     <a href="{{ url_for('student_dashboard') }}"><i class="fas fa-home"></i> Home</a>
     <a href="{{ url_for('edit_student_record') }}"><i class="fas fa-edit"></i> Edit Profile</a>
-    <a href="{{ url_for('sit_in_rules') }}"><i class="fas fa-clipboard-list"></i> Sit-in Rules</a>
+    <a href="{{ url_for('sit_in_rules') }}" class="active"><i class="fas fa-clipboard-list"></i> Sit-in Rules</a>
     <a href="{{ url_for('lab_rules') }}"><i class="fas fa-exclamation-circle"></i> Lab Rules & Regulations</a>
     <a href="{{ url_for('sit_in_history') }}"><i class="fas fa-history"></i> Sit-in History</a>
     <a href="{{ url_for('make_reservation') }}"><i class="fas fa-calendar-plus"></i> Reservation</a>
+    <a href="{{ url_for('lab_schedules') }}"><i class="fas fa-calendar"></i> View Lab Schedules</a>
+    <div class="divider" style="height: 1px; background: var(--border-color); margin: 10px 1.5rem;"></div>
 </div>
 
 <div class="content" id="content">
@@ -232,30 +234,6 @@
         } else {
             sidebar.classList.add("active");
             content.style.marginLeft = "260px";
-        }
-    }
-    
-    function logoutSitIn() {
-        if (confirm("Are you sure you want to end your current sit-in session?")) {
-            fetch('/student/logout_sitin', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert("Sit-in session ended successfully.");
-                    window.location.reload();
-                } else {
-                    alert("Error: " + (data.error || "Failed to end sit-in session."));
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert("An error occurred while ending the sit-in session.");
-            });
         }
     }
 </script>
