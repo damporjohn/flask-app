@@ -190,6 +190,10 @@
         color: #FFD700;
     }
     
+    .reset-icon {
+        color: #FF6B6B;
+    }
+    
     .points-badge {
         display: inline-flex;
         align-items: center;
@@ -200,6 +204,19 @@
         font-weight: 600;
         background: rgba(77, 182, 172, 0.2);
         color: var(--accent-color);
+        margin-right: 0.5rem;
+    }
+    
+    .sessions-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.25rem 0.5rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: rgba(255, 107, 107, 0.2);
+        color: #FF6B6B;
         margin-right: 0.5rem;
     }
     
@@ -431,6 +448,11 @@
                             <button class="action-btn reward-button" onclick="openRewardModal('{{ student.id }}', '{{ student.firstname }}', '{{ student.lastname }}')">
                                 <i class="fas fa-gift reward-icon"></i> Reward
                             </button>
+                            <div style="margin: 10px 0;"></div>
+                            <span class="sessions-badge" id="sessions-{{ student.id }}">0 sessions</span>
+                            <button class="action-btn reset-button" onclick="resetStudentSessions('{{ student.id }}', '{{ student.firstname }}', '{{ student.lastname }}')">
+                                <i class="fas fa-sync-alt reset-icon"></i> Reset Session
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -597,10 +619,65 @@ function loadStudentPoints() {
         });
 }
 
-// Initialize student points with backend data
+// Load student sessions from the server
+function loadStudentSessions() {
+    const rows = document.getElementById('studentsTableBody').getElementsByTagName('tr');
+    for (let row of rows) {
+        const studentId = row.cells[0].textContent;
+        fetch(`/get_student_remaining_sessions/${studentId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.remaining_sessions !== undefined) {
+                    const sessionsBadge = document.getElementById(`sessions-${studentId}`);
+                    if (sessionsBadge) {
+                        sessionsBadge.textContent = `${data.remaining_sessions} sessions`;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error loading student sessions:', error);
+            });
+    }
+}
+
+function resetStudentSessions(studentId, firstName, lastName) {
+    if (confirm(`Are you sure you want to reset the sessions for ${firstName} ${lastName}? This will set their remaining sessions to 25.`)) {
+        fetch('/reset_student_sessions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                student_id: studentId
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update the sessions badge
+                const sessionsBadge = document.getElementById(`sessions-${studentId}`);
+                if (sessionsBadge) {
+                    sessionsBadge.textContent = `${data.remaining_sessions} sessions`;
+                }
+                showNotification(`Sessions reset to 25 for ${firstName} ${lastName}`);
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+            alert('An error occurred while resetting sessions.');
+        });
+    }
+}
+
+// Initialize student points and sessions with backend data
 document.addEventListener('DOMContentLoaded', function() {
     // Load existing points
     loadStudentPoints();
+    
+    // Load student sessions
+    loadStudentSessions();
     
     // Add event listener for the reward form
     document.getElementById('rewardForm').addEventListener('submit', function(e) {

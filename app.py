@@ -1568,6 +1568,12 @@ def add_used_column():
             
     except mysql.connector.Error as e:
         return jsonify({'error': str(e)}), 500
+            
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 @app.route('/admin/add_reservation_id_column', methods=['GET'])
 def add_reservation_id_column():
@@ -2109,6 +2115,102 @@ def get_student_points():
         
     except mysql.connector.Error as e:
         return jsonify({"error": str(e)}), 500
+        
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
+
+@app.route('/reset_student_sessions', methods=['POST'])
+def reset_student_sessions():
+    if session.get('role') != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    data = request.json
+    student_id = data.get('student_id')
+    
+    if not student_id:
+        return jsonify({"error": "Student ID is required"}), 400
+        
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        # Reset the student's remaining sessions to 25
+        cursor.execute("""
+            UPDATE students 
+            SET remaining_sessions = 25 
+            WHERE id = %s
+        """, (student_id,))
+        
+        conn.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Student sessions reset successfully",
+            "remaining_sessions": 25
+        })
+        
+    except mysql.connector.Error as e:
+        return jsonify({"error": str(e)}), 500
+        
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
+
+@app.route('/get_labs_list')
+def get_labs_list():
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("SELECT roomNumber FROM labs ORDER BY roomNumber")
+        labs = cursor.fetchall()
+        
+        return jsonify({
+            "success": True,
+            "labs": [lab['roomNumber'] for lab in labs]
+        })
+        
+    except mysql.connector.Error as e:
+        return jsonify({"error": str(e)}), 500
+        
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
+
+@app.route('/mark_report_read', methods=['POST'])
+def mark_report_read():
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    try:
+        data = request.get_json()
+        report_id = data.get('report_id')
+        
+        if not report_id:
+            return jsonify({'error': 'Report ID is required'}), 400
+            
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        
+        # Update the report status to 'read'
+        cursor.execute("""
+            UPDATE reports 
+            SET status = 'read' 
+            WHERE id = %s
+        """, (report_id,))
+        
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Report marked as read'})
+        
+    except mysql.connector.Error as e:
+        return jsonify({'error': str(e)}), 500
         
     finally:
         if 'cursor' in locals():

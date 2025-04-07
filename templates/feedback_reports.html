@@ -69,6 +69,7 @@
         box-shadow: var(--box-shadow);
         overflow: hidden;
         transition: all 0.2s ease;
+        cursor: pointer;
     }
 
     .report-card:hover {
@@ -259,6 +260,88 @@
             grid-template-columns: 1fr;
         }
     }
+
+    /* Modal Styles */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        backdrop-filter: blur(5px);
+    }
+
+    .modal-content {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 2rem;
+        border-radius: 16px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: var(--text-secondary);
+    }
+
+    .modal-close:hover {
+        color: var(--text-primary);
+    }
+
+    .modal-rating {
+        font-size: 1.5rem;
+        color: #fbbf24;
+        margin-bottom: 1rem;
+    }
+
+    .modal-text {
+        font-size: 1rem;
+        line-height: 1.6;
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .modal-date {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .modal-room {
+        background: var(--primary-color);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+    }
 </style>
 
 <div class="dashboard-container" style="margin-top: 100px;">
@@ -331,6 +414,79 @@
 <script>
 let allReports = [];
 let rooms = new Set();
+
+function showReportModal(report) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="student-info">
+                    <div class="student-avatar">
+                        ${report.firstname[0]}${report.lastname[0]}
+                    </div>
+                    <div class="student-details">
+                        <h3>${report.firstname} ${report.lastname}</h3>
+                        <p>Student ID: ${report.student_id}</p>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-rating">
+                ${'★'.repeat(report.rating)}${'☆'.repeat(5 - report.rating)}
+            </div>
+            <div class="modal-text">
+                ${report.report_text}
+            </div>
+            <div class="modal-footer">
+                <span class="modal-date">
+                    <i class="far fa-clock me-1"></i>
+                    ${new Date(report.created_at).toLocaleString()}
+                </span>
+                <span class="modal-room">
+                    <i class="fas fa-door-open me-1"></i>
+                    Room ${report.room_number}
+                </span>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    modal.style.display = 'block';
+
+    // Mark report as read if it was unread
+    if (report.status === 'unread') {
+        markReportAsRead(report.id);
+    }
+}
+
+function closeModal() {
+    const modal = document.querySelector('.modal-overlay');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function markReportAsRead(reportId) {
+    fetch('/mark_report_read', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ report_id: reportId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the report status in our local data
+            const report = allReports.find(r => r.id === reportId);
+            if (report) {
+                report.status = 'read';
+                applyFilters(); // Refresh the display
+            }
+        }
+    })
+    .catch(error => console.error('Error marking report as read:', error));
+}
 
 function loadReports() {
     fetch('/get_reports')
@@ -420,7 +576,7 @@ function applyFilters() {
     const container = document.getElementById('reportsContainer');
     if (filteredReports.length > 0) {
         container.innerHTML = filteredReports.map(report => `
-            <div class="report-card">
+            <div class="report-card" onclick="showReportModal(${JSON.stringify(report).replace(/"/g, '&quot;')})">
                 <div class="report-header">
                     <div class="student-info">
                         <div class="student-avatar">

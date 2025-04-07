@@ -57,14 +57,21 @@
                         <input type="date" id="max" name="max" class="form-control">
                     </div>
                 </div>
+
                 <div class="col-md-6">
                     <div class="purpose-filter">
                         <label>Filter by Purpose:</label>
                         <select id="purposeFilter" class="form-control">
-                            <option value="">All</option>
+                            <option value="">All Purpose</option>
                             {% for language in PROGRAMMING_LANGUAGES %}
                             <option value="{{ language }}">{{ language }}</option>
                             {% endfor %}
+                        </select>
+                    </div>
+                    <div class="lab-filter">
+                        <label>Filter by Lab:</label>
+                        <select id="labFilter" class="form-control">
+                            <option value="">All Labs</option>
                         </select>
                     </div>
                 </div>
@@ -131,6 +138,27 @@
 
 <script>
 $(document).ready(function() {
+    // Load labs from database
+    function loadLabs() {
+        fetch('/get_labs_list')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const labFilter = $('#labFilter');
+                    // Clear existing options except the first one
+                    labFilter.find('option:not(:first)').remove();
+                    
+                    // Add lab options
+                    data.labs.forEach(lab => {
+                        labFilter.append(`<option value="${lab}">Lab ${lab}</option>`);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error loading labs:', error);
+            });
+    }
+
     // Initialize date range pickers
     let minDate = new DateTime('#min', {
         format: 'YYYY-MM-DD'
@@ -138,6 +166,9 @@ $(document).ready(function() {
     let maxDate = new DateTime('#max', {
         format: 'YYYY-MM-DD'
     });
+
+    // Load labs when the page loads
+    loadLabs();
 
     // Custom range filtering function
     $.fn.dataTable.ext.search.push(
@@ -208,6 +239,12 @@ $(document).ready(function() {
     $('#purposeFilter').on('change', function() {
         let purpose = $(this).val();
         table.column(4).search(purpose).draw();
+    });
+
+    // Apply lab filter
+    $('#labFilter').on('change', function() {
+        let lab = $(this).val();
+        table.column(5).search(lab).draw();
     });
 });
 </script>
