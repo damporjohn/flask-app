@@ -19,6 +19,7 @@
         flex-direction: column;
     }
     .header {
+        position: fixed;        
         margin-top: 100px;
         display: flex;
         justify-content: space-between;
@@ -29,6 +30,12 @@
         padding: 10px 5%;
         font-weight: bold;
         flex-shrink: 0;
+    /* Ensure header is positioned above content */
+    z-index: 1000;
+    top: 0;
+    left: 0;
+    right: 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
     }
     .nav-links {
         display: flex;
@@ -69,11 +76,13 @@
         justify-content: center;
     }
     .container {
+        margin-top: 200px;
         max-width: 1200px;
         margin: 0 auto;
         padding: 20px;
     }
     .card {
+        margin-top: 200px;
         background: white;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -196,6 +205,7 @@
         <a href="{{ url_for('sit_in_reports') }}">Sit-in Reports</a>
         <a href="{{ url_for('feedback_reports') }}">Feedback Reports</a>
         <a href="{{ url_for('leaderboard') }}"><i class="fas fa-trophy"></i> Leaderboard</a>
+        <a href="{{ url_for('lab_resources') }}"><i class="fas fa-book"></i> Lab Resources</a>
         <button onclick="updateAllSessions()">Reset All Sessions</button>
     </div>
 </div>

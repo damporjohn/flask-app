@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .resources-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .resources-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+        color: white;
+        padding: 2rem;
+        border-radius: 16px;
+        margin-bottom: 2rem;
+    }
+
+    .resources-header h1 {
+        color: white;
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 600;
+    }
+
+    .add-resource-form {
+        background: white;
+        padding: 2rem;
+        border-radius: 16px;
+        box-shadow: var(--box-shadow);
+        margin-bottom: 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .submit-btn {
+        background: var(--primary-color);
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .submit-btn:hover {
+        background: var(--accent-color);
+    }
+
+    .resources-table {
+        width: 100%;
+        background: white;
+        border-radius: 16px;
+        box-shadow: var(--box-shadow);
+        overflow: hidden;
+    }
+
+    .resources-table th,
+    .resources-table td {
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .resources-table th {
+        background: var(--light-bg);
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .status-active {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-inactive {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .toggle-btn {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .toggle-btn.active {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .toggle-btn.inactive {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .delete-btn {
+        background: #fee2e2;
+        color: #991b1b;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .delete-btn:hover {
+        background: #fecaca;
+    }
+    .back-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: white;
+        text-decoration: none;
+        padding: 0.75rem 1.25rem;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        font-weight: 500;
+    }
+    .back-button:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: translateX(-5px);
+        color: white;
+    }
+</style>
+
+<div class="resources-container" style="margin-top: 100px;">
+    <div class="resources-header">
+        <a href="{{ url_for('admin_dashboard') }}" class="back-button">
+            <i class="fas fa-arrow-left"></i>
+            Back to Dashboard
+        </a>
+        <h1>Lab Resources & Materials</h1>
+    </div>
+
+    <div class="add-resource-form">
+        <h2>Add New Resource</h2>
+        <form id="addResourceForm">
+            <div class="form-group">
+                <label class="form-label">Resource Title</label>
+                <input type="text" class="form-control" id="resourceTitle" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Resource Link</label>
+                <input type="url" class="form-control" id="resourceLink" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea class="form-control" id="resourceDescription" rows="3" required></textarea>
+            </div>
+            <button type="submit" class="submit-btn">Add Resource</button>
+        </form>
+    </div>
+
+    <table class="resources-table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Link</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="resourcesList">
+            <!-- Resources will be loaded here -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+function loadResources() {
+    fetch('/get_lab_resources')
+        .then(response => response.json())
+        .then(data => {
+            const resourcesList = document.getElementById('resourcesList');
+            resourcesList.innerHTML = data.resources.map(resource => `
+                <tr>
+                    <td>${resource.title}</td>
+                    <td>${resource.description}</td>
+                    <td><a href="${resource.link}" target="_blank">${resource.link}</a></td>
+                    <td>
+                        <span class="status-badge ${resource.status === 'active' ? 'status-active' : 'status-inactive'}">
+                            ${resource.status}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="toggle-btn ${resource.status === 'active' ? 'active' : 'inactive'}"
+                                onclick="toggleResourceStatus(${resource.id})">
+                            ${resource.status === 'active' ? 'Disable' : 'Enable'}
+                        </button>
+                        <button class="delete-btn" onclick="deleteResource(${resource.id})">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        })
+        .catch(error => console.error('Error loading resources:', error));
+}
+
+function toggleResourceStatus(resourceId) {
+    fetch('/toggle_resource_status', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ resource_id: resourceId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadResources();
+        }
+    })
+    .catch(error => console.error('Error toggling resource status:', error));
+}
+
+function deleteResource(resourceId) {
+    if (confirm('Are you sure you want to delete this resource?')) {
+        fetch('/delete_resource', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ resource_id: resourceId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadResources();
+            }
+        })
+        .catch(error => console.error('Error deleting resource:', error));
+    }
+}
+
+document.getElementById('addResourceForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const title = document.getElementById('resourceTitle').value;
+    const link = document.getElementById('resourceLink').value;
+    const description = document.getElementById('resourceDescription').value;
+    
+    fetch('/add_lab_resource', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            title: title,
+            link: link,
+            description: description
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('addResourceForm').reset();
+            loadResources();
+        }
+    })
+    .catch(error => console.error('Error adding resource:', error));
+});
+
+// Load resources when page loads
+document.addEventListener('DOMContentLoaded', loadResources);
+</script>
+{% endblock %} 

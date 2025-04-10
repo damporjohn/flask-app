@@ -5,6 +5,8 @@ from datetime import datetime, date
 import pymysql
 import os
 from werkzeug.utils import secure_filename
+from functools import wraps
+
 registration_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # Add this at the top of your app.py with your other constants
@@ -35,6 +37,15 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'username' not in session:
+            flash('Please log in first.', 'danger')
+            return redirect(url_for('login_dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 #Index route
 @app.route('/', methods=['GET', 'POST'])
@@ -441,7 +452,7 @@ def sit_in_history():
         try:
             conn = mysql.connector.connect(**DB_CONFIG)
             cursor = conn.cursor(dictionary=True)
-            
+
             cursor.execute("SELECT id FROM students WHERE username = %s", (username,))
             student = cursor.fetchone()
             
@@ -2215,6 +2226,133 @@ def mark_report_read():
     finally:
         if 'cursor' in locals():
             cursor.close()
+        if 'conn' in locals():
+            conn.close()
+
+@app.route('/lab_resources&materials')
+@login_required
+def lab_resources():
+    if session.get('role') != 'admin':
+        return redirect(url_for('index'))
+    return render_template('admin_lab_resources&materials.html')
+
+@app.route('/student_lab_resources&materials')
+@login_required
+def student_lab_resources():
+    return render_template('student_lab_resources&materials.html')
+
+@app.route('/add_lab_resource', methods=['POST'])
+@login_required
+def add_lab_resource():
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = request.get_json()
+    title = data.get('title')
+    link = data.get('link')
+    description = data.get('description')
+    
+    if not all([title, link, description]):
+        return jsonify({'error': 'Missing required fields'}), 400
+    
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            INSERT INTO lab_resources (title, link, description, status)
+            VALUES (%s, %s, %s, 'active')
+        """, (title, link, description))
+        
+        conn.commit()
+        return jsonify({'message': 'Resource added successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@app.route('/get_lab_resources')
+@login_required
+def get_lab_resources():
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT id, title, link, description, status
+            FROM lab_resources
+            ORDER BY created_at DESC
+        """)
+        
+        resources = cursor.fetchall()
+        return jsonify({'resources': resources})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@app.route('/toggle_resource_status', methods=['POST'])
+@login_required
+def toggle_resource_status():
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = request.get_json()
+    resource_id = data.get('resource_id')
+    
+    if not resource_id:
+        return jsonify({'error': 'Resource ID is required'}), 400
+    
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            UPDATE lab_resources
+            SET status = CASE
+                WHEN status = 'active' THEN 'inactive'
+                ELSE 'active'
+            END
+            WHERE id = %s
+        """, (resource_id,))
+        
+        conn.commit()
+        return jsonify({'message': 'Resource status updated successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@app.route('/delete_resource', methods=['POST'])
+@login_required
+def delete_resource():
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = request.get_json()
+    resource_id = data.get('resource_id')
+    
+    if not resource_id:
+        return jsonify({'error': 'Resource ID is required'}), 400
+    
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        
+        cursor.execute("DELETE FROM lab_resources WHERE id = %s", (resource_id,))
+        
+        conn.commit()
+        return jsonify({'message': 'Resource deleted successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
         if 'conn' in locals():
             conn.close()
 

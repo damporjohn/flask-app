@@ -248,14 +248,27 @@
 
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
-    <a href="{{ url_for('student_dashboard') }}"><i class="fas fa-home"></i> Home</a>
-    <a href="{{ url_for('edit_student_record') }}"><i class="fas fa-edit"></i> Edit Profile</a>
-    <a href="{{ url_for('sit_in_rules') }}"><i class="fas fa-clipboard-list"></i> Sit-in Rules</a>
-    <a href="{{ url_for('lab_rules') }}"><i class="fas fa-exclamation-circle"></i> Lab Rules & Regulations</a>
-    <a href="{{ url_for('sit_in_history') }}" class="active"><i class="fas fa-history"></i> Sit-in History</a>
-    <a href="{{ url_for('make_reservation') }}"><i class="fas fa-calendar-plus"></i> Reservation</a>
-    <a href="{{ url_for('lab_schedules') }}"><i class="fas fa-calendar"></i> View Lab Schedules</a>
-    <div class="divider" style="height: 1px; background: var(--border-color); margin: 10px 1.5rem;"></div>
+    <a href="{{ url_for('student_dashboard') }}" class="sidebar-link active">
+        <i class="fas fa-home"></i> Dashboard
+    </a>
+    <a href="{{ url_for('make_reservation') }}" class="sidebar-link">
+        <i class="fas fa-calendar-plus"></i> Make Reservation
+    </a>
+    <a href="{{ url_for('sit_in_history') }}" class="sidebar-link">
+        <i class="fas fa-history"></i> Sit-in History
+    </a>
+    <a href="{{ url_for('edit_student_record') }}" class="sidebar-link">
+        <i class="fas fa-user-edit"></i> Edit Profile
+    </a>
+    <a href="{{ url_for('sit_in_rules') }}" class="sidebar-link">
+        <i class="fas fa-clipboard-list"></i> Sit-in Rules
+    </a>
+    <a href="{{ url_for('lab_rules') }}" class="sidebar-link">
+        <i class="fas fa-book"></i> Lab Rules
+    </a>
+    <a href="{{ url_for('student_lab_resources') }}" class="sidebar-link">
+        <i class="fas fa-book-open"></i> Lab Resources
+    </a>
 </div>
 
 <div class="content" id="content">
