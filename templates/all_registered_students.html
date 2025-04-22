@@ -4,7 +4,7 @@
 <style>
     .dashboard-container {
         margin-top: 100px;
-        max-width: 1400px;
+        max-width: 2000px;
         padding: 0 1rem;
     }
 
@@ -364,6 +364,19 @@
     .notification.show {
         transform: translateX(0);
     }
+
+    .usage-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.25rem 0.5rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: rgba(37, 99, 235, 0.2);
+        color: #2563eb;
+        margin-right: 0.5rem;
+    }
 </style>
 
 <div class="dashboard-container">
@@ -428,6 +441,7 @@
                     <th>Year Level</th>
                     <th>Email</th>
                     <th>Registration Date</th>
+                    <th>Lab Usage</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -442,6 +456,7 @@
                     <td><span class="year-badge">{{ student.yearlevel }}th Year</span></td>
                     <td>{{ student.email }}</td>
                     <td>{{ student.registration_date.strftime('%Y-%m-%d %I:%M %p') }}</td>
+                    <td><span class="usage-badge" id="usage-{{ student.id }}">0 sit-ins</span></td>
                     <td>
                         <div class="points-section">
                             <span class="points-badge" id="points-{{ student.id }}">0 pts</span>
@@ -485,7 +500,7 @@
                 </div>
             </div>
             <div class="form-group">
-                <label for="rewardReason">Reason (optional):</label>
+                <label for="rewardReason">Reason:</label>
                 <input type="text" id="rewardReason" class="reward-input" placeholder="e.g., Class participation, Good behavior">
             </div>
             <div class="reward-actions">
@@ -553,20 +568,33 @@ function openRewardModal(studentId, firstName, lastName) {
     studentName.textContent = `${firstName} ${lastName}`;
     studentIdElement.textContent = studentId;
     
-    // Set current points
-    const points = studentPoints[studentId] || 0;
-    currentPoints.textContent = points;
-    currentSessions.textContent = Math.floor(points / 3);
+    // Fetch current points from the server
+    fetch(`/get_student_points/${studentId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentPoints.textContent = data.total_points;
+                currentSessions.textContent = Math.floor(data.total_points / 3);
+            } else {
+                currentPoints.textContent = '0';
+                currentSessions.textContent = '0';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching points:', error);
+            currentPoints.textContent = '0';
+            currentSessions.textContent = '0';
+        });
     
     // Reset form
     document.getElementById('pointsToAdd').value = 1;
     document.getElementById('rewardReason').value = '';
     
+    // Store student ID for form submission
+    document.getElementById('rewardForm').dataset.studentId = studentId;
+    
     // Display modal
     modal.style.display = 'flex';
-    
-    // Store current student ID for form submission
-    document.getElementById('rewardForm').dataset.studentId = studentId;
 }
 
 function closeRewardModal() {
@@ -586,13 +614,13 @@ function decrementPoints() {
     }
 }
 
-function showNotification(message) {
+function showNotification(message, type = 'success') {
     const notification = document.getElementById('notification');
     notification.textContent = message;
-    notification.classList.add('show');
+    notification.className = `notification ${type}`;
     
     setTimeout(() => {
-        notification.classList.remove('show');
+        notification.className = 'notification';
     }, 3000);
 }
 
@@ -671,69 +699,88 @@ function resetStudentSessions(studentId, firstName, lastName) {
     }
 }
 
-// Initialize student points and sessions with backend data
-document.addEventListener('DOMContentLoaded', function() {
-    // Load existing points
-    loadStudentPoints();
-    
-    // Load student sessions
-    loadStudentSessions();
-    
-    // Add event listener for the reward form
-    document.getElementById('rewardForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const studentId = this.dataset.studentId;
-        const pointsToAdd = parseInt(document.getElementById('pointsToAdd').value);
-        const reason = document.getElementById('rewardReason').value;
-        
-        // Send the data to the backend
-        fetch('/award_points', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                student_id: studentId,
-                points: pointsToAdd,
-                reason: reason
-            }),
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Update our local tracking
-                studentPoints[studentId] = data.total_points;
-                
-                // Update the points badge
-                const pointsBadge = document.getElementById(`points-${studentId}`);
-                pointsBadge.textContent = data.total_points + ' pts';
-                
-                // Show success notification
-                let message = `${pointsToAdd} point${pointsToAdd > 1 ? 's' : ''} awarded!`;
-                if (data.sessions_added > 0) {
-                    message += ` Added ${data.sessions_added} sit-in session${data.sessions_added > 1 ? 's' : ''}.`;
+// Add this new function to load lab usage data
+function loadLabUsage() {
+    const rows = document.getElementById('studentsTableBody').getElementsByTagName('tr');
+    for (let row of rows) {
+        const studentId = row.cells[0].textContent;
+        fetch(`/get_student_lab_usage/${studentId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.total_usage !== undefined) {
+                    const usageBadge = document.getElementById(`usage-${studentId}`);
+                    if (usageBadge) {
+                        const count = data.total_usage;
+                        usageBadge.textContent = `${count} sit-in${count !== 1 ? 's' : ''}`;
+                    }
                 }
-                showNotification(message);
-                
-                // Close modal
-                closeRewardModal();
-            } else {
-                alert('Error: ' + data.error);
-            }
+            })
+            .catch(error => {
+                console.error('Error loading lab usage:', error);
+            });
+    }
+}
+
+// Update the DOMContentLoaded event listener to include lab usage loading
+document.addEventListener('DOMContentLoaded', function() {
+    // Existing initialization code...
+    loadStudentPoints();
+    loadStudentSessions();
+    loadLabUsage();
+    
+    // Rest of the existing code...
+});
+
+// Add event listener for reward form submission
+document.getElementById('rewardForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const studentId = this.dataset.studentId;
+    const points = document.getElementById('pointsToAdd').value;
+    const reason = document.getElementById('rewardReason').value;
+    
+    if (!points || !reason) {
+        alert('Please fill in all fields');
+        return;
+    }
+    
+    fetch('/award_points', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            student_id: studentId,
+            points: points,
+            reason: reason
         })
-        .catch((error) => {
-            console.error('Error:', error);
-            alert('An error occurred while awarding points.');
-        });
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update points badge in table
+            const pointsBadge = document.getElementById(`points-${studentId}`);
+            const sessionsBadge = document.getElementById(`sessions-${studentId}`);
+            if (pointsBadge) pointsBadge.textContent = data.total_points;
+            if (sessionsBadge) sessionsBadge.textContent = Math.floor(data.total_points / 3);
+            
+            // Show success notification
+            showNotification('Points awarded successfully!', 'success');
+            
+            // Close modal
+            document.getElementById('rewardModal').style.display = 'none';
+            
+            // Update points in modal
+            document.getElementById('modalCurrentPoints').textContent = data.total_points;
+            document.getElementById('modalCurrentSessions').textContent = Math.floor(data.total_points / 3);
+        } else {
+            showNotification(data.message || 'Failed to award points', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('An error occurred while awarding points', 'error');
     });
-    
-    // Filter functionality
-    const searchFilter = document.getElementById('searchFilter');
-    const courseFilter = document.getElementById('courseFilter');
-    const yearFilter = document.getElementById('yearFilter');
-    
-    // Existing filter code...
 });
 </script>
 {% endblock %} 

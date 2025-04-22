@@ -269,6 +269,9 @@
     <a href="{{ url_for('student_lab_resources') }}" class="sidebar-link">
         <i class="fas fa-book-open"></i> Lab Resources
     </a>
+    <a href="{{ url_for('view_lab_schedules') }}" class="sidebar-link active">
+        <i class="fas fa-calendar"></i> View Lab Schedules
+    </a>
 </div>
 
 <div class="content" id="content">
@@ -297,7 +300,7 @@
                                 <td>{{ session.login_time.strftime('%H:%M:%S') }}</td>
                                 <td>{% if session.logout_time %}{{ session.logout_time.strftime('%H:%M:%S') }}{% else %}Active{% endif %}</td>
                                 <td>
-                                    {% if session.is_activated %}
+                                    {% if session.login_time %}
                                         {% if session.logout_time %}
                                             <span class="badge bg-success">Completed</span>
                                         {% else %}

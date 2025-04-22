@@ -206,7 +206,11 @@
         <a href="{{ url_for('feedback_reports') }}">Feedback Reports</a>
         <a href="{{ url_for('leaderboard') }}"><i class="fas fa-trophy"></i> Leaderboard</a>
         <a href="{{ url_for('lab_resources') }}"><i class="fas fa-book"></i> Lab Resources</a>
-        <button onclick="updateAllSessions()">Reset All Sessions</button>
+        <a href="{{ url_for('lab_schedules') }}"><i class="fas fa-calendar"></i> Laboratory Schedules</a>
+        <button class="btn btn-warning" onclick="updateAllSessions()">
+            <i class="fas fa-sync-alt"></i> Reset All Sessions
+        </button>
+        <a data-bs-toggle="modal" data-bs-target="#addLabScheduleModal"><i class="fas fa-calendar-plus"></i> Add Lab Schedule</a>
     </div>
 </div>
 
@@ -333,7 +337,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Lab:</label>
-                        <select id="roomNumber" class="form-control" name="room_number" required>
+                        <select id="sitInRoomNumber" class="form-control" name="roomNumber" required>
                             <option value="">Select a Lab</option>
                         </select>
                     </div>
@@ -369,6 +373,72 @@
                         <textarea class="form-control" id="announcementContent" name="content" rows="4" required></textarea>
                     </div>
                     <button type="submit" class="btn btn-primary">Post Announcement</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Lab Schedule Modal -->
+<div class="modal fade" id="addLabScheduleModal" tabindex="-1" aria-labelledby="addLabScheduleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addLabScheduleModalLabel">Add Lab Schedule</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="labScheduleForm">
+                    <div class="mb-3">
+                        <label class="form-label">Lab:</label>
+                        <select id="scheduleRoomNumber" class="form-control" name="roomNumber" required>
+                            <option value="">Select a Lab</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="days" class="form-label">Days</label>
+                        <div class="form-check-inline">
+                            <input type="checkbox" class="form-check-input" id="dayM" name="days[]" value="M">
+                            <label class="form-check-label" for="dayM">Monday</label>
+                        </div>
+                        <div class="form-check-inline">
+                            <input type="checkbox" class="form-check-input" id="dayT" name="days[]" value="T">
+                            <label class="form-check-label" for="dayT">Tuesday</label>
+                        </div>
+                        <div class="form-check-inline">
+                            <input type="checkbox" class="form-check-input" id="dayW" name="days[]" value="W">
+                            <label class="form-check-label" for="dayW">Wednesday</label>
+                        </div>
+                        <div class="form-check-inline">
+                            <input type="checkbox" class="form-check-input" id="dayTH" name="days[]" value="TH">
+                            <label class="form-check-label" for="dayTH">Thursday</label>
+                        </div>
+                        <div class="form-check-inline">
+                            <input type="checkbox" class="form-check-input" id="dayF" name="days[]" value="F">
+                            <label class="form-check-label" for="dayF">Friday</label>
+                        </div>
+                        <div class="form-check-inline">
+                            <input type="checkbox" class="form-check-input" id="dayS" name="days[]" value="S">
+                            <label class="form-check-label" for="dayS">Saturday</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="startTime" class="form-label">Start Time</label>
+                        <input type="time" class="form-control" id="startTime" name="start_time" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="endTime" class="form-label">End Time</label>
+                        <input type="time" class="form-control" id="endTime" name="end_time" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="course" class="form-label">Course</label>
+                        <input type="text" class="form-control" id="course" name="course" placeholder="Enter course name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="instructor" class="form-label">Instructor</label>
+                        <input type="text" class="form-control" id="instructor" name="instructor" placeholder="Example: Mr. John Doe" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Add Schedule</button>
                 </form>
             </div>
         </div>
@@ -508,7 +578,7 @@ document.addEventListener("DOMContentLoaded", function() {
         
         const studentId = document.getElementById('studentId').value;
         const purpose = Array.from(document.getElementById('purpose').selectedOptions).map(opt => opt.value).join(',');
-        const roomNumber = document.getElementById('roomNumber').value;
+        const roomNumber = document.getElementById('sitInRoomNumber').value;
         
         if (!studentId || !purpose || !roomNumber) {
             alert('Please fill in all required fields');
@@ -518,7 +588,7 @@ document.addEventListener("DOMContentLoaded", function() {
         const formData = new FormData();
         formData.append('student_id', studentId);
         formData.append('purpose', purpose);
-        formData.append('room_number', roomNumber);
+        formData.append('roomNumber', roomNumber);
         
         fetch('/admin/activate_sitin', {
             method: 'POST',
@@ -615,7 +685,7 @@ function handleSearchResultClick(studentId, fullName) {
         
         // Load programming languages and rooms when modal opens
         loadProgrammingLanguages();
-        fetchRooms();
+        fetchRoomsForSitIn();
     }, 500);
 }
 
@@ -646,11 +716,11 @@ function loadProgrammingLanguages() {
         });
 }
 
-function fetchRooms() {
+function fetchRoomsForSitIn() {
     fetch("/get_labs")
         .then(response => response.json())
         .then(data => {
-            const roomSelect = document.getElementById("roomNumber");
+            const roomSelect = document.getElementById("sitInRoomNumber");
             if (!roomSelect) {
                 console.error('Room select element not found');
                 return;
@@ -768,14 +838,136 @@ function loadAnnouncements() {
         });
 }
 
-// Update All Remaining Sessions
 function updateAllSessions() {
-    fetch('/update_all_remaining_sessions', { method: 'POST' })
+    if (confirm('Are you sure you want to reset all students\' remaining sessions to 25? This action cannot be undone.')) {
+        fetch('/update_all_remaining_sessions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
     .then(response => response.json())
     .then(data => {
-        alert(data.success || data.error);
-    })
-    .catch(error => console.error("Error updating sessions:", error));
+            if (data.success) {
+                alert('Successfully reset all students\' sessions to 25!');
+                // Refresh the page to show updated values
+                location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'Failed to reset sessions'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while resetting sessions');
+        });
+    }
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    const addLabScheduleModal = document.getElementById('addLabScheduleModal');
+    const labForm = document.getElementById('labScheduleForm');
+    const labSelect = document.getElementById('scheduleRoomNumber');
+
+    if (!addLabScheduleModal || !labForm || !labSelect) {
+        console.error('Required DOM elements not found.');
+        return;
+    }
+
+    const modalInstance = new bootstrap.Modal(addLabScheduleModal);
+
+    // Load labs when the modal is shown
+    addLabScheduleModal.addEventListener('show.bs.modal', () => {
+        console.log('Modal is being shown, loading labs...');
+        fetchRoomsForSchedule();
+    });
+
+    // Reset form and clear dropdown on modal close
+    addLabScheduleModal.addEventListener('hidden.bs.modal', () => {
+        labForm.reset();
+        labSelect.innerHTML = '<option value="">Select a Lab</option>';
+    });
+
+    // Form submission handler
+    labForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const roomNumber = labSelect.value;
+        if (!roomNumber) {
+            alert('Please select a lab room');
+            return;
+        }
+
+        const selectedDays = Array.from(document.querySelectorAll('input[name="days[]"]:checked'))
+            .map(cb => cb.value)
+            .join('');
+
+        if (!selectedDays) {
+            alert('Please select at least one day');
+            return;
+        }
+
+        const startTime = document.getElementById('startTime').value;
+        const endTime = document.getElementById('endTime').value;
+        if (startTime >= endTime) {
+            alert('End time must be after start time');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('roomNumber', roomNumber);
+        formData.append('days', selectedDays);
+        formData.append('start_time', startTime);
+        formData.append('end_time', endTime);
+        formData.append('course', document.getElementById('course').value);
+        formData.append('instructor', document.getElementById('instructor').value);
+
+        fetch('/add_lab_schedule', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Lab schedule added successfully!');
+                modalInstance.hide();
+                labForm.reset();
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to add schedule.');
+            }
+        })
+        .catch(error => {
+            console.error('Error submitting form:', error);
+            alert('An error occurred while submitting the form.');
+        });
+    });
+
+    function fetchRoomsForSchedule() {
+        fetch("/get_labs")
+            .then(response => response.json())
+            .then(data => {
+                const roomSelect = document.getElementById("scheduleRoomNumber");
+                if (!roomSelect) {
+                    console.error('Room select element not found');
+                    return;
+                }
+                
+                roomSelect.innerHTML = "<option value=''>Select a Lab</option>";
+                
+                if (data.labs && Array.isArray(data.labs)) {
+                    data.labs.forEach(lab => {
+                        const option = document.createElement('option');
+                        option.value = lab.roomNumber;
+                        option.textContent = `Lab ${lab.roomNumber} (Capacity: ${lab.capacity})`;
+                        roomSelect.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching rooms:", error);
+                alert('Error loading available rooms');
+            });
+    }
+});
 </script>
 {% endblock %}

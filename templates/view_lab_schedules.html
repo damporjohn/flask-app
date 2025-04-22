@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    :root {
+        --gunmetal-1: #293438;
+        --gunmetal-2: #242C30;
+        --gunmetal-3: #1D2429;
+        --gunmetal-4: #0F1314;
+        --gunmetal-5: #010100;
+        --text-light: #ffffff;
+        --text-muted: #cccccc;
+        --accent: #4db6ac;
+        --danger: #f44336;
+        --success: #4caf50;
+        --warning: #ff9800;
+        --primary: #0277bd;
+        --border-color: rgba(255,255,255,0.05);
+        --box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 80px;
+        left: 0;
+        height: calc(100vh - 80px);
+        width: 250px;
+        background: var(--gunmetal-3);
+        box-shadow: var(--box-shadow);
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 1020;
+        padding: 1.5rem 0;
+        border-right: 1px solid var(--border-color);
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
+    }
+
+    .sidebar-link {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1.5rem;
+        color: var(--text-light);
+        text-decoration: none;
+        transition: all 0.2s ease;
+        margin: 0.25rem 1rem;
+        border-radius: 8px;
+        font-weight: 500;
+    }
+
+    .sidebar-link:hover {
+        background: var(--gunmetal-2);
+        color: var(--accent);
+        transform: translateX(5px);
+    }
+
+    .sidebar-link i {
+        width: 20px;
+        margin-right: 12px;
+        color: var(--text-muted);
+    }
+
+    .sidebar-link:hover i {
+        color: var(--accent);
+    }
+
+    .hamburger-btn {
+        position: fixed;
+        left: 20px;
+        top: 90px;
+        z-index: 1025;
+        background: var(--gunmetal-3);
+        color: var(--text-light);
+        border: none;
+        box-shadow: var(--box-shadow);
+        border-radius: 8px;
+        padding: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .hamburger-btn:hover {
+        background: var(--gunmetal-2);
+        transform: scale(1.05);
+    }
+
+    .container {
+        margin-top: 20px;
+        padding: 0 1rem;
+        max-width: 1400px;
+        margin-left: 60px;
+        margin-right: auto;
+        transition: margin-left 0.3s ease;
+    }
+
+    .sidebar.active ~ #content,
+    .sidebar.active + .container {
+        margin-left: 260px;
+    }
+
+    .table {
+        background: var(--gunmetal-3);
+        color: var(--text-light);
+        border-radius: 8px;
+        box-shadow: var(--box-shadow);
+        width: 100%;
+        margin-top: 20px;
+    }
+
+    .table th {
+        background: var(--gunmetal-2);
+        color: var(--accent);
+        font-weight: 600;
+        padding: 12px;
+        text-align: left;
+    }
+
+    .table td {
+        padding: 12px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .table tr:hover {
+        background: var(--gunmetal-1);
+    }
+
+    .card-header {
+        background: var(--gunmetal-2);
+        color: var(--accent);
+        padding: 15px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .card-title {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+</style>
+
+<!-- Toggle Sidebar Button -->
+<button class="hamburger-btn" onclick="toggleSidebar()">
+    <i class="fas fa-bars"></i>
+</button>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+    <a href="{{ url_for('student_dashboard') }}" class="sidebar-link">
+        <i class="fas fa-home"></i> Dashboard
+    </a>
+    <a href="{{ url_for('make_reservation') }}" class="sidebar-link">
+        <i class="fas fa-calendar-plus"></i> Make Reservation
+    </a>
+    <a href="{{ url_for('sit_in_history') }}" class="sidebar-link">
+        <i class="fas fa-history"></i> Sit-in History
+    </a>
+    <a href="{{ url_for('edit_student_record') }}" class="sidebar-link">
+        <i class="fas fa-user-edit"></i> Edit Profile
+    </a>
+    <a href="{{ url_for('sit_in_rules') }}" class="sidebar-link">
+        <i class="fas fa-clipboard-list"></i> Sit-in Rules
+    </a>
+    <a href="{{ url_for('lab_rules') }}" class="sidebar-link">
+        <i class="fas fa-book"></i> Lab Rules
+    </a>
+    <a href="{{ url_for('student_lab_resources') }}" class="sidebar-link">
+        <i class="fas fa-book-open"></i> Lab Resources
+    </a>
+    <a href="{{ url_for('view_lab_schedules') }}" class="sidebar-link active">
+        <i class="fas fa-calendar"></i> View Lab Schedules
+    </a>
+</div>
+
+<!-- Container -->
+<div class="container" id="content" style="margin-top: 100px;">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title">Laboratory Schedules</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Lab Room</th>
+                            <th>Days</th>
+                            <th>Start Time</th>
+                            <th>End Time</th>
+                            <th>Course</th>
+                            <th>Instructor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if schedules %}
+                            {% for schedule in schedules %}
+                            <tr>
+                                <td>{{ schedule.roomNumber }}</td>
+                                <td>{{ schedule.days }}</td>
+                                <td>{{ schedule.start_time }}</td>
+                                <td>{{ schedule.end_time }}</td>
+                                <td>{{ schedule.course }}</td>
+                                <td>{{ schedule.instructor }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center">No schedules found</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const content = document.getElementById('content');
+    
+    sidebar.classList.toggle('active');
+    
+    if (sidebar.classList.contains('active')) {
+        content.style.marginLeft = '260px';
+    } else {
+        content.style.marginLeft = '60px';
+    }
+}
+
+// If page is loaded directly, open sidebar by default for smaller screens
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.getElementById('sidebar');
+    const content = document.getElementById('content');
+    
+    if (window.innerWidth <= 768) {
+        sidebar.classList.add('active');
+        content.style.marginLeft = '260px';
+    }
+});
+</script>
+{% endblock %} 

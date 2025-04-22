@@ -413,6 +413,113 @@
     .bg-success {
         background-color: var(--success) !important;
     }
+
+    /* Rewards Modal Styles */
+    .rewards-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 1050;
+        backdrop-filter: blur(5px);
+    }
+
+    .rewards-modal.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .rewards-modal-content {
+        background: linear-gradient(135deg, var(--gunmetal-1), var(--gunmetal-3));
+        border-radius: 16px;
+        padding: 2rem;
+        width: 90%;
+        max-width: 500px;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--box-shadow);
+        position: relative;
+    }
+
+    .rewards-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .rewards-modal-title {
+        font-size: 1.5rem;
+        color: var(--text-light);
+        margin: 0;
+    }
+
+    .close-modal {
+        background: none;
+        border: none;
+        color: var(--text-light);
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: color 0.2s ease;
+    }
+
+    .close-modal:hover {
+        color: var(--accent);
+    }
+
+    .rewards-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .reward-stat {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 1.5rem;
+        border-radius: 12px;
+        text-align: center;
+        border: 1px solid var(--border-color);
+    }
+
+    .reward-stat h4 {
+        color: var(--accent);
+        font-size: 2rem;
+        margin: 0;
+        font-weight: 600;
+    }
+
+    .reward-stat p {
+        color: var(--text-muted);
+        margin: 0.5rem 0 0;
+        font-size: 0.875rem;
+    }
+
+    .view-rewards-btn {
+        background: var(--accent);
+        color: var(--text-light);
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+
+    .view-rewards-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(77, 182, 172, 0.2);
+    }
 </style>
 
 <!-- Hamburger Button -->
@@ -443,10 +550,13 @@
     <a href="{{ url_for('student_lab_resources') }}" class="sidebar-link">
         <i class="fas fa-book-open"></i> Lab Resources
     </a>
+    <a href="{{ url_for('view_lab_schedules') }}" class="sidebar-link active">
+        <i class="fas fa-calendar"></i> View Lab Schedules
+    </a>
 </div>
 
 
-<div class="dashboard-container">
+<div class="dashboard-container" data-student-id="{{ student.id }}">
     <!-- Main Content (Left Side) -->
     <div class="main-content">
         <div class="student-info-card">
@@ -463,16 +573,12 @@
             </div>
             <div class="info-grid">
                 <div class="info-item">
-                    <h6>ID Number</h6>
+                    <h6>Student ID</h6>
                     <p>{{ student.id }}</p>
                 </div>
                 <div class="info-item">
-                    <h6>Username</h6>
-                    <p>{{ student.username }}</p>
-                </div>
-                <div class="info-item">
-                    <h6>Full Name</h6>
-                    <p>{{ student.firstname }} {{ student.midname or '' }} {{ student.lastname }}</p>
+                    <h6>Name</h6>
+                    <p>{{ student.firstname }} {{ student.lastname }}</p>
                 </div>
                 <div class="info-item">
                     <h6>Course</h6>
@@ -480,13 +586,20 @@
                 </div>
                 <div class="info-item">
                     <h6>Year Level</h6>
-                    <p>{{ student.yearlevel }}</p>
+                    <p>{{ student.yearlevel }}th Year</p>
                 </div>
                 <div class="info-item">
                     <h6>Email</h6>
                     <p>{{ student.email }}</p>
                 </div>
+                <div class="info-item">
+                    <h6>Remaining Sessions</h6>
+                    <p>{{ student.remaining_sessions }}</p>
+                </div>
             </div>
+            <button class="view-rewards-btn" onclick="openRewardsModal()">
+                <i class="fas fa-gift"></i> View Rewards
+            </button>
             {% else %}
             <p class="text-center text-danger">No student data found.</p>
             {% endif %}
@@ -584,6 +697,29 @@
     </div>
 </div>
 {% endif %}
+
+<!-- Rewards Modal -->
+<div id="rewardsModal" class="rewards-modal">
+    <div class="rewards-modal-content">
+        <div class="rewards-modal-header">
+            <h3 class="rewards-modal-title">Your Rewards</h3>
+            <button class="close-modal" onclick="closeRewardsModal()">&times;</button>
+        </div>
+        <div class="rewards-stats">
+            <div class="reward-stat">
+                <h4 id="totalPoints">0</h4>
+                <p>Total Points Earned</p>
+            </div>
+            <div class="reward-stat">
+                <h4 id="totalSitIns">0</h4>
+                <p>Total Sit-in Rewards</p>
+            </div>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.875rem; text-align: center;">
+            Every 3 points earned = 1 additional sit-in session
+        </p>
+    </div>
+</div>
 
 <script>
     function toggleSidebar() {
@@ -701,5 +837,64 @@
             alert('Error submitting feedback');
         });
     });
-    </script>
+
+    function openRewardsModal() {
+        const modal = document.getElementById('rewardsModal');
+        modal.classList.add('active');
+        
+        // Fetch points data
+        fetch(`/get_student_points/${document.querySelector('[data-student-id]').dataset.studentId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const totalPoints = data.total_points || 0;
+                    document.getElementById('totalPoints').textContent = totalPoints;
+                    // Calculate additional sit-in sessions (3 points = 1 session)
+                    const additionalSessions = Math.floor(totalPoints / 3);
+                    document.getElementById('totalSitIns').textContent = additionalSessions;
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function closeRewardsModal() {
+        const modal = document.getElementById('rewardsModal');
+        modal.classList.remove('active');
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('rewardsModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeRewardsModal();
+        }
+    });
+
+    // Function to update the dashboard stats
+    function updateDashboardStats() {
+        // Get student ID from the data attribute
+        const studentId = document.querySelector('[data-student-id]').dataset.studentId;
+
+        // Fetch points data
+        fetch(`/get_student_points/${studentId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const totalPoints = data.total_points || 0;
+                    // Update total points
+                    document.getElementById('totalPoints').textContent = totalPoints;
+                    // Calculate additional sit-in sessions (3 points = 1 session)
+                    const additionalSessions = Math.floor(totalPoints / 3);
+                    document.getElementById('totalSitIns').textContent = additionalSessions;
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching points:', error);
+            });
+    }
+
+    // Call the function when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        updateDashboardStats();
+    });
+</script>
 {% endblock %}
