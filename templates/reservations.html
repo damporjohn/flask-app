@@ -11,14 +11,14 @@
         </div>
         <h2>Reservations</h2>
         <div>
-            <span class="badge bg-primary">Total Pending: <span id="pendingCount">0</span></span>
+            <span class="badge bg-primary">Pending Requests: <span id="pendingCount">0</span></span>
         </div>
     </div>
 
-    <!-- Reservations Table -->
-    <div class="card custom-card">
+    <!-- Current Reservations Table -->
+    <div class="card custom-card mb-4">
         <div class="card-header">
-            <h5 class="card-title mb-0">Pending Reservations</h5>
+            <h5 class="card-title mb-0">Current Reservation Requests</h5>
         </div>
         <div class="card-body">
             <div class="table-responsive">
@@ -44,65 +44,229 @@
             </div>
         </div>
     </div>
+
+    <!-- Reservation History Table -->
+    <div class="card custom-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Reservation History</h5>
+            <div>
+                <button class="btn btn-sm btn-outline-primary" onclick="exportToExcel()">
+                    <i class="fas fa-file-excel"></i> Export to Excel
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="exportToCSV()">
+                    <i class="fas fa-file-csv"></i> Export to CSV
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table custom-table">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Name</th>
+                            <th>Purpose</th>
+                            <th>Room</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                            <th>Response Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                        <tr>
+                            <td colspan="8" class="text-center">Loading history...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Computer Selection Modal -->
+<div class="modal fade" id="computerSelectionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Select Computer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="computerSelectionForm">
+                    <input type="hidden" id="selectedReservationId">
+                    <input type="hidden" id="selectedStudentId">
+                    <input type="hidden" id="selectedPurpose">
+                    <input type="hidden" id="selectedRoom">
+                    
+                    <div class="mb-3">
+                        <label for="computerNumber" class="form-label">Computer Number:</label>
+                        <input type="number" class="form-control" id="computerNumber" 
+                               min="1" required>
+                        <small class="text-muted">Please enter a valid computer number</small>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-play"></i> Activate Session
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
-// Function to load reservations
 function loadReservations() {
     fetch('/get_reservations')
         .then(response => response.json())
         .then(data => {
             const tableBody = document.getElementById('reservationsTableBody');
+            const historyBody = document.getElementById('historyTableBody');
             
-            // Filter out used reservations
-            const activeReservations = data.reservations ? data.reservations.filter(r => !r.used) : [];
-            
-            // Update pending count
-            document.getElementById('pendingCount').textContent = activeReservations.length;
-            
-            if (!activeReservations || activeReservations.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="8" class="text-center">No pending reservations found</td></tr>';
+            if (!data.reservations || data.reservations.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="8" class="text-center">No reservations found</td></tr>';
+                historyBody.innerHTML = '<tr><td colspan="8" class="text-center">No history found</td></tr>';
                 return;
             }
+
+            // Split reservations into current and history
+            const currentReservations = data.reservations.filter(r => 
+                r.status === 'pending' || 
+                (r.status === 'approved' && r.used === 0)
+            );
             
-            tableBody.innerHTML = activeReservations.map(reservation => `
-                <tr data-reservation-id="${reservation.id}">
-                    <td>${reservation.student_id}</td>
-                    <td>${reservation.firstname} ${reservation.lastname}</td>
-                    <td>${reservation.purpose}</td>
-                    <td>${reservation.room_number}</td>
-                    <td>${reservation.requested_date}</td>
-                    <td>${reservation.requested_time}</td>
-                    <td>
-                        <span class="badge ${reservation.status === 'pending' ? 'bg-warning' : 'bg-success'}">
-                            ${reservation.status}
-                        </span>
-                    </td>
-                    <td>
-                        ${reservation.status === 'pending' ? `
+            const historyReservations = data.reservations.filter(r => 
+                (r.status === 'approved' && r.used === 1) || 
+                r.status === 'rejected'
+            ).sort((a, b) => new Date(b.admin_response) - new Date(a.admin_response));
+            
+            // Update pending count
+            const pendingCount = currentReservations.filter(r => r.status === 'pending').length;
+            document.getElementById('pendingCount').textContent = pendingCount;
+            
+            // Render current reservations
+            tableBody.innerHTML = currentReservations.map(reservation => {
+                let statusBadgeClass = '';
+                let actionButtons = '';
+                let statusText = reservation.status;
+
+                // Determine status badge class and actions
+                if (reservation.status === 'pending') {
+                    statusBadgeClass = 'bg-warning';
+                    actionButtons = `
                         <button class="btn btn-sm btn-success" onclick="approveReservation(${reservation.id})">
                             <i class="fas fa-check"></i> Approve
                         </button>
                         <button class="btn btn-sm btn-danger" onclick="disapproveReservation(${reservation.id})">
                             <i class="fas fa-times"></i> Disapprove
                         </button>
-                        ` : `
-                        <button class="btn btn-sm btn-primary" onclick="activateSession(${reservation.id})">
-                            <i class="fas fa-play"></i> Activate Session
-                        </button>
-                        `}
-                    </td>
-                </tr>
-            `).join('');
+                    `;
+                } else if (reservation.status === 'approved') {
+                    if (reservation.used === 0) {
+                        statusBadgeClass = 'bg-success';
+                        actionButtons = `
+                            <button class="btn btn-sm btn-primary" onclick="activateSession(${reservation.id})">
+                                <i class="fas fa-play"></i> Activate Session
+                            </button>
+                        `;
+                    } else {
+                        statusBadgeClass = 'bg-primary';
+                        statusText = 'Active';
+                        actionButtons = ''; // No buttons for active sessions
+                    }
+                }
+
+                // Format the date
+                const requestedDate = new Date(reservation.requested_date).toLocaleDateString();
+
+                return `
+                    <tr data-reservation-id="${reservation.id}">
+                        <td>${reservation.student_id}</td>
+                        <td>${reservation.firstname} ${reservation.lastname}</td>
+                        <td>${reservation.purpose}</td>
+                        <td>${reservation.room_number}</td>
+                        <td>${requestedDate}</td>
+                        <td>${reservation.requested_time}</td>
+                        <td>
+                            <span class="badge ${statusBadgeClass}">
+                                ${statusText}
+                            </span>
+                        </td>
+                        <td>${actionButtons}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Render history
+            historyBody.innerHTML = historyReservations.map(reservation => {
+                let statusBadgeClass = '';
+                let statusText = '';
+
+                if (reservation.status === 'rejected') {
+                    statusBadgeClass = 'bg-danger';
+                    statusText = 'Rejected';
+                } else if (reservation.status === 'approved' && reservation.used === 1) {
+                    statusBadgeClass = 'bg-info';
+                    statusText = 'Completed';
+                }
+
+                // Format dates
+                const requestedDate = new Date(reservation.requested_date).toLocaleDateString();
+                const requestedTime = reservation.requested_time;
+                const createdAt = new Date(reservation.created_at).toLocaleString();
+                const adminResponse = reservation.admin_response ? new Date(reservation.admin_response).toLocaleString() : 'N/A';
+
+                return `
+                    <tr>
+                        <td>${reservation.student_id}</td>
+                        <td>${reservation.firstname} ${reservation.lastname}</td>
+                        <td>${reservation.purpose}</td>
+                        <td>${reservation.room_number}</td>
+                        <td>${requestedDate}</td>
+                        <td>${requestedTime}</td>
+                        <td>
+                            <span class="badge ${statusBadgeClass}">
+                                ${statusText}
+                            </span>
+                        </td>
+                        <td>
+                            <small>
+                                <div>Requested: ${createdAt}</div>
+                                <div>Response: ${adminResponse}</div>
+                            </small>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         })
         .catch(error => {
             console.error('Error:', error);
             document.getElementById('reservationsTableBody').innerHTML = 
                 '<tr><td colspan="8" class="text-center text-danger">Error loading reservations</td></tr>';
+            document.getElementById('historyTableBody').innerHTML = 
+                '<tr><td colspan="8" class="text-center text-danger">Error loading history</td></tr>';
         });
 }
 
-// Function to approve a reservation
+function activateSession(reservationId) {
+    if (!confirm('Are you sure you want to activate this session?')) {
+        return;
+    }
+    
+    // Get the reservation details from the table row
+    const row = document.querySelector(`tr[data-reservation-id="${reservationId}"]`);
+    
+    // Store the reservation details in the modal form
+    document.getElementById('selectedReservationId').value = reservationId;
+    document.getElementById('selectedStudentId').value = row.cells[0].textContent;
+    document.getElementById('selectedPurpose').value = row.cells[2].textContent;
+    document.getElementById('selectedRoom').value = row.cells[3].textContent;
+    
+    // Show the computer selection modal
+    const modal = new bootstrap.Modal(document.getElementById('computerSelectionModal'));
+    modal.show();
+}
+
 function approveReservation(reservationId) {
     if (!confirm('Are you sure you want to approve this reservation?')) {
         return;
@@ -129,7 +293,6 @@ function approveReservation(reservationId) {
     });
 }
 
-// Function to disapprove a reservation
 function disapproveReservation(reservationId) {
     if (!confirm('Are you sure you want to disapprove this reservation?')) {
         return;
@@ -156,44 +319,153 @@ function disapproveReservation(reservationId) {
     });
 }
 
-// Function to activate session from reservation
-function activateSession(reservationId) {
-    if (!confirm('Are you sure you want to activate this session?')) {
-        return;
-    }
+// Export functions
+function exportToExcel() {
+    const historyTable = document.querySelector('#historyTableBody');
+    const rows = Array.from(historyTable.querySelectorAll('tr'));
     
-    // First get the reservation details from the table row
-    const row = document.querySelector(`tr[data-reservation-id="${reservationId}"]`);
+    const headers = [
+        'Student ID',
+        'Name',
+        'Purpose',
+        'Room',
+        'Requested Date',
+        'Requested Time',
+        'Status',
+        'Created At',
+        'Admin Response'
+    ];
+    
+    const data = rows.map(row => {
+        const cells = Array.from(row.querySelectorAll('td'));
+        return [
+            cells[0].textContent.trim(), // Student ID
+            cells[1].textContent.trim(), // Name
+            cells[2].textContent.trim(), // Purpose
+            cells[3].textContent.trim(), // Room
+            cells[4].textContent.trim(), // Requested Date
+            cells[5].textContent.trim(), // Requested Time
+            cells[6].textContent.trim(), // Status
+            cells[7].querySelector('div:first-child').textContent.replace('Requested: ', '').trim(),
+            cells[7].querySelector('div:last-child').textContent.replace('Response: ', '').trim()
+        ];
+    });
+    
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Completed Reservations');
+    XLSX.writeFile(wb, 'completed_reservations.xlsx');
+}
+
+function exportToCSV() {
+    const historyTable = document.querySelector('#historyTableBody');
+    const rows = Array.from(historyTable.querySelectorAll('tr'));
+    
+    const headers = [
+        'Student ID',
+        'Name',
+        'Purpose',
+        'Room',
+        'Requested Date',
+        'Requested Time',
+        'Status',
+        'Created At',
+        'Admin Response'
+    ].join(',');
+    
+    const csvData = rows.map(row => {
+        const cells = Array.from(row.querySelectorAll('td'));
+        const values = [
+            cells[0].textContent.trim(), // Student ID
+            cells[1].textContent.trim(), // Name
+            cells[2].textContent.trim(), // Purpose
+            cells[3].textContent.trim(), // Room
+            cells[4].textContent.trim(), // Requested Date
+            cells[5].textContent.trim(), // Requested Time
+            cells[6].textContent.trim(), // Status
+            cells[7].querySelector('div:first-child').textContent.replace('Requested: ', '').trim(),
+            cells[7].querySelector('div:last-child').textContent.replace('Response: ', '').trim()
+        ];
+        return values.map(value => value.includes(',') ? `"${value}"` : value).join(',');
+    });
+    
+    const csv = [headers, ...csvData].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'completed_reservations.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+// Add event listener for computer selection form
+document.getElementById('computerSelectionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const reservationId = document.getElementById('selectedReservationId').value;
+    const computerNumber = document.getElementById('computerNumber').value;
+    
+    // Create the request body
     const formData = new FormData();
-    formData.append('student_id', row.cells[0].textContent); // Student ID from first column
-    formData.append('purpose', row.cells[2].textContent); // Purpose from third column
-    formData.append('room_number', row.cells[3].textContent); // Room from fourth column
-    formData.append('reservation_id', reservationId); // Add reservation ID
+    formData.append('student_id', document.getElementById('selectedStudentId').value);
+    formData.append('purpose', document.getElementById('selectedPurpose').value);
+    formData.append('roomNumber', document.getElementById('selectedRoom').value);
+    formData.append('computer_number', computerNumber);
     
     fetch('/admin/activate_sitin', {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
-            alert(data.message);
-            loadReservations();
+            // Close the modal
+            bootstrap.Modal.getInstance(document.getElementById('computerSelectionModal')).hide();
+            
+            // Update the row to show active status
+            const row = document.querySelector(`tr[data-reservation-id="${reservationId}"]`);
+            const statusCell = row.querySelector('td:nth-child(7)');
+            const actionCell = row.querySelector('td:nth-child(8)');
+            
+            statusCell.innerHTML = '<span class="badge bg-primary">Active</span>';
+            actionCell.innerHTML = ''; // Remove the activate button
+            
+            // Mark the reservation as active
+            return fetch(`/admin/handle_reservation/${reservationId}/activate`, {
+                method: 'POST'
+            });
         } else {
-            alert('Error: ' + data.error);
+            throw new Error(data.error || 'Unknown error occurred');
         }
+    })
+    .then(response => response.json())
+    .then(() => {
+        alert('Session activated successfully!');
+        // Reset the form
+        document.getElementById('computerSelectionForm').reset();
+        // Reload the reservations to show updated status
+        loadReservations();
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error activating session');
+        alert('Error: ' + error.message);
     });
-}
+});
 
-// Load reservations when page loads
+// Load reservations when page loads and set up auto-refresh
 document.addEventListener('DOMContentLoaded', function() {
     loadReservations();
-    // Refresh reservations every minute
-    setInterval(loadReservations, 60000);
+    // Refresh reservations every 30 seconds to catch updates from current_sit_in.html
+    setInterval(loadReservations, 30000);
 });
 </script>
+
+<!-- Add XLSX library for Excel export -->
+<script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
 {% endblock %} 

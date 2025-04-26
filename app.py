@@ -633,23 +633,28 @@ def handle_reservation(request_id, action):
         conn = mysql.connector.connect(**DB_CONFIG)
         cursor = conn.cursor(dictionary=True)
 
-        # First check if the reservation exists and is pending
+        # First check if the reservation exists and its current status
         cursor.execute("""
             SELECT * FROM reservation_requests 
-            WHERE id = %s AND status = 'pending'
+            WHERE id = %s
         """, (request_id,))
         
         reservation = cursor.fetchone()
         if not reservation:
-            return jsonify({'error': 'Reservation not found or already processed'})
+            return jsonify({'error': 'Reservation not found'})
+        
+        # Check if reservation has already been used
+        if reservation['used'] == 1 and action != 'complete':
+            return jsonify({'error': 'This reservation has already been used'})
         
         if action == 'approve':
-            # Update the reservation status
+            if reservation['status'] != 'pending':
+                return jsonify({'error': 'Reservation is not in pending state'})
+                
             cursor.execute("""
                 UPDATE reservation_requests 
                 SET status = 'approved', 
-                    admin_response = NOW(),
-                    used = 0
+                    admin_response = NOW()
                 WHERE id = %s
             """, (request_id,))
             
@@ -657,7 +662,9 @@ def handle_reservation(request_id, action):
             return jsonify({'success': True, 'message': 'Reservation approved successfully'})
             
         elif action == 'reject':
-            # Update the reservation status
+            if reservation['status'] != 'pending':
+                return jsonify({'error': 'Reservation is not in pending state'})
+                
             cursor.execute("""
                 UPDATE reservation_requests 
                 SET status = 'rejected', 
@@ -668,12 +675,26 @@ def handle_reservation(request_id, action):
             
             conn.commit()
             return jsonify({'success': True, 'message': 'Reservation rejected successfully'})
+            
+        elif action == 'complete':
+            if reservation['status'] != 'approved':
+                return jsonify({'error': 'Reservation must be approved first'})
+                
+            cursor.execute("""
+                UPDATE reservation_requests 
+                SET used = 1,
+                    admin_response = NOW()
+                WHERE id = %s
+            """, (request_id,))
+            
+            conn.commit()
+            return jsonify({'success': True, 'message': 'Session completed successfully'})
         
         else:
             return jsonify({'error': 'Invalid action'})
 
     except mysql.connector.Error as e:
-        print(f"Database error in handle_reservation: {str(e)}")  # Add logging
+        print(f"Database error in handle_reservation: {str(e)}")
         return jsonify({'error': str(e)})
 
     finally:
@@ -1109,48 +1130,34 @@ def get_programming_languages():
     return jsonify({'languages': PROGRAMMING_LANGUAGES})
 
 @app.route('/current_sit_in')
+@login_required
 def current_sit_in():
-    if 'role' not in session or session['role'] != 'admin':
-        flash('You must be an admin to access this page.', 'danger')
+    if session.get('role') != 'admin':
+        flash('Access denied. Admin privileges required.', 'danger')
         return redirect(url_for('login_dashboard'))
         
     try:
         conn = mysql.connector.connect(**DB_CONFIG)
         cursor = conn.cursor(dictionary=True)
         
-        # Get active sit-in sessions
-        query = """
-            SELECT 
-                s.id as sit_in_id,
-                s.student_id,
-                st.firstname,
-                st.lastname,
-                st.course,
-                s.purpose,
-                s.room_number,
-                DATE_FORMAT(s.login_time, '%Y-%m-%d %H:%i:%s') as login_time
+        # Get all active sit-in sessions with student details
+        cursor.execute("""
+            SELECT s.id as sit_in_id, s.student_id, s.purpose, s.room_number, 
+                   s.computer_number, s.login_time, s.is_activated,
+                   st.firstname, st.lastname, st.course
             FROM sit_in s
             JOIN students st ON s.student_id = st.id
-            WHERE s.logout_time IS NULL  /* Only check for null logout_time */
+            WHERE s.logout_time IS NULL
             ORDER BY s.login_time DESC
-        """
-        cursor.execute(query)
-        active_sessions = cursor.fetchall()
+        """)
         
-        # Debug print
-        print(f"Found {len(active_sessions)} active sessions")
-        for sit_in_session in active_sessions:
-            print(f"Session ID: {sit_in_session['sit_in_id']}, Student: {sit_in_session['firstname']} {sit_in_session['lastname']}")
+        sit_ins = cursor.fetchall()
+        total = len(sit_ins)
         
-        return render_template(
-            'current_sit_in.html',
-            sit_ins=active_sessions,
-            total=len(active_sessions),
-            PROGRAMMING_LANGUAGES=PROGRAMMING_LANGUAGES
-        )
+        return render_template('current_sit_in.html', sit_ins=sit_ins, total=total)
         
     except mysql.connector.Error as e:
-        flash(f"Database error: {e}", "danger")
+        flash(f'Database error: {str(e)}', 'danger')
         return redirect(url_for('admin_dashboard'))
         
     finally:
@@ -1168,7 +1175,7 @@ def end_sit_in_session(sitInId):
         conn = mysql.connector.connect(**DB_CONFIG)
         cursor = conn.cursor(dictionary=True)
 
-        # First check if the session exists and is active
+        # First check if the session exists and get student info
         cursor.execute("""
             SELECT s.id, s.student_id, s.login_time, s.logout_time,
                    st.username, st.firstname, st.lastname
@@ -1185,6 +1192,27 @@ def end_sit_in_session(sitInId):
         if sit_in['logout_time']:
             return jsonify({'error': 'Session already ended'}), 400
 
+        # Find the corresponding active reservation
+        cursor.execute("""
+            SELECT id FROM reservation_requests 
+            WHERE student_id = %s 
+            AND status = 'approved' 
+            AND used = 0
+            ORDER BY created_at DESC 
+            LIMIT 1
+        """, (sit_in['student_id'],))
+        
+        reservation = cursor.fetchone()
+
+        # Update the reservation if found
+        if reservation:
+            cursor.execute("""
+                UPDATE reservation_requests 
+                SET used = 1,
+                    admin_response = NOW()
+                WHERE id = %s
+            """, (reservation['id'],))
+
         # Deduct one session from the student's remaining sessions
         cursor.execute("""
             UPDATE students 
@@ -1193,7 +1221,7 @@ def end_sit_in_session(sitInId):
             AND remaining_sessions > 0
         """, (sit_in['student_id'],))
 
-        # Update the record with logout time
+        # Update the sit-in record with logout time
         cursor.execute("""
             UPDATE sit_in 
             SET logout_time = NOW()
@@ -1302,82 +1330,77 @@ def admin_register_sitin():
             conn.close()
 
 @app.route('/admin/activate_sitin', methods=['POST'])
+@login_required
 def admin_activate_sitin():
-    if session.get('role') != 'admin':
-        return jsonify({'error': 'Unauthorized'}), 403
-        
+    if not session.get('role') == 'admin':
+        return jsonify({'success': False, 'error': 'Unauthorized access'}), 403
+
     try:
-        student_id = request.form.get('student_id')
-        purpose = request.form.get('purpose')
-        room_number = request.form.get('roomNumber')  # Changed to match the form field name
-        
-        if not all([student_id, purpose, room_number]):
-            return jsonify({'error': 'Missing required fields'}), 400
-            
+        # Try to get JSON data first
+        json_data = request.get_json(silent=True)
+        if json_data:
+            data = json_data
+        else:
+            # Fall back to form data if JSON is not available
+            data = {
+                'student_id': request.form.get('student_id'),
+                'purpose': request.form.get('purpose'),
+                'roomNumber': request.form.get('roomNumber'),
+                'computer_number': request.form.get('computer_number')
+            }
+
+        student_id = data.get('student_id')
+        purpose = data.get('purpose')
+        room_number = data.get('roomNumber')
+        computer_number = data.get('computer_number')
+
+        # Convert computer_number to int if it's a string
+        if isinstance(computer_number, str) and computer_number.isdigit():
+            computer_number = int(computer_number)
+
+        if not all([student_id, purpose, room_number, computer_number]):
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+
+        # Check if student exists
         conn = mysql.connector.connect(**DB_CONFIG)
         cursor = conn.cursor(dictionary=True)
-        
-        # Check if student exists
-        cursor.execute("SELECT * FROM students WHERE id = %s", (student_id,))
-        student = cursor.fetchone()
-        if not student:
-            return jsonify({'error': 'Student not found'}), 404
-            
-        # Check if lab exists and is available
-        cursor.execute("SELECT * FROM labs WHERE roomNumber = %s AND status = 'Available'", (room_number,))
-        lab = cursor.fetchone()
-        if not lab:
-            return jsonify({'error': 'Lab not available'}), 400
 
-        # Check for existing active session
-        cursor.execute("""
-            SELECT * FROM sit_in 
-            WHERE student_id = %s 
-            AND logout_time IS NULL
-        """, (student_id,))
+        # Check if student has an active session
+        cursor.execute('SELECT id FROM sit_in WHERE student_id = %s AND logout_time IS NULL', (student_id,))
         active_session = cursor.fetchone()
         if active_session:
-            return jsonify({'error': 'Student already has an active session'}), 400
-            
-        # Check remaining sessions
-        cursor.execute("SELECT remaining_sessions FROM students WHERE id = %s", (student_id,))
-        student_data = cursor.fetchone()
-        if student_data['remaining_sessions'] <= 0:
-            return jsonify({'error': 'No remaining sessions available'}), 400
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Student already has an active session'}), 400
 
-        # Insert new sit-in record
-        cursor.execute("""
+        # Check if computer is already in use
+        cursor.execute('SELECT id FROM sit_in WHERE computer_number = %s AND room_number = %s AND logout_time IS NULL', 
+                      (computer_number, room_number))
+        computer_in_use = cursor.fetchone()
+        if computer_in_use:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Computer is already in use'}), 400
+
+        # Insert new sit-in session
+        cursor.execute('''
             INSERT INTO sit_in 
-            (student_id, room_number, purpose, login_time) 
-            VALUES (%s, %s, %s, NOW())
-        """, (student_id, room_number, purpose))
-
-        # Update remaining sessions
-        cursor.execute("""
-            UPDATE students 
-            SET remaining_sessions = remaining_sessions - 1 
-                WHERE id = %s
-        """, (student_id,))
+            (student_id, purpose, room_number, computer_number, is_activated, activation_time, login_time)
+            VALUES (%s, %s, %s, %s, 1, NOW(), NOW())
+        ''', (student_id, purpose, room_number, computer_number))
         
         conn.commit()
+        cursor.close()
+        conn.close()
+
         return jsonify({
-            'success': True, 
-            'message': 'Sit-in session activated successfully'
+            'success': True,
+            'message': 'Session activated successfully'
         })
-        
-    except mysql.connector.Error as e:
-        print(f"Database error in admin_activate_sitin: {str(e)}")
-        return jsonify({'error': f'Database error: {str(e)}'}), 500
 
     except Exception as e:
-        print(f"Unexpected error in admin_activate_sitin: {str(e)}")
-        return jsonify({'error': 'An unexpected error occurred'}), 500
-        
-    finally:
-        if 'cursor' in locals():
-            cursor.close()
-        if 'conn' in locals():
-            conn.close()
+        print(f"Error in activate_sitin: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/student/login_sitin', methods=['POST'])
 def student_login_sitin():
@@ -1450,6 +1473,12 @@ def student_logout_sitin():
         
     except mysql.connector.Error as e:
         return jsonify({'error': str(e)}), 500
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 @app.route('/admin/get_pending_activations')
 def get_pending_activations():
@@ -1537,24 +1566,31 @@ def get_reservations():
         conn = mysql.connector.connect(**DB_CONFIG)
         cursor = conn.cursor(dictionary=True)
 
-        # Get all reservations that haven't been used yet
+        # Get all reservations with student information
         cursor.execute("""
             SELECT 
                 r.id, 
                 r.student_id, 
-                r.room_number, 
                 r.purpose, 
                 DATE_FORMAT(r.requested_date, '%Y-%m-%d') as requested_date,
                 TIME_FORMAT(r.requested_time, '%H:%i') as requested_time,
-                r.status, 
+                r.status,
                 r.created_at,
+                r.admin_response,
                 r.used,
-                s.firstname, 
+                r.room_number,
+                s.firstname,
                 s.lastname
             FROM reservation_requests r
             JOIN students s ON r.student_id = s.id
-            WHERE (r.used = 0 OR r.used IS NULL)
-            ORDER BY r.created_at DESC
+            ORDER BY 
+                CASE 
+                    WHEN r.status = 'pending' THEN 1
+                    WHEN r.status = 'approved' AND r.used = 0 THEN 2
+                    WHEN r.status = 'approved' AND r.used = 1 THEN 3
+                    WHEN r.status = 'rejected' THEN 4
+                END,
+                r.created_at DESC
         """)
         
         reservations = cursor.fetchall()
@@ -1563,11 +1599,13 @@ def get_reservations():
         for reservation in reservations:
             if isinstance(reservation['created_at'], datetime):
                 reservation['created_at'] = reservation['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+            if isinstance(reservation['admin_response'], datetime):
+                reservation['admin_response'] = reservation['admin_response'].strftime('%Y-%m-%d %H:%M:%S')
 
         return jsonify({'reservations': reservations})
 
     except mysql.connector.Error as e:
-        print(f"Database error in get_reservations: {str(e)}")  # Add logging
+        print(f"Database error in get_reservations: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
     finally:
@@ -2564,6 +2602,161 @@ def get_student_points_by_id(student_id):
         if 'cursor' in locals():
             cursor.close()
         if 'conn' in locals():
+            conn.close()
+
+@app.route('/admin/add_is_active_column', methods=['GET'])
+def add_is_active_column():
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        
+        # Check if the column already exists
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM information_schema.COLUMNS 
+            WHERE TABLE_SCHEMA = %s
+            AND TABLE_NAME = 'reservation_requests'
+            AND COLUMN_NAME = 'is_active'
+        """, (DB_CONFIG['database'],))
+        
+        result = cursor.fetchone()
+        if result[0] == 0:
+            # Add the column if it doesn't exist
+            cursor.execute("""
+                ALTER TABLE reservation_requests
+                ADD COLUMN is_active TINYINT(1) DEFAULT 0
+            """)
+            
+            conn.commit()
+            return jsonify({'success': True, 'message': 'Column added successfully'})
+        else:
+            return jsonify({'success': True, 'message': 'Column already exists'})
+            
+    except mysql.connector.Error as e:
+        return jsonify({'error': str(e)}), 500
+            
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/computer_control')
+@login_required
+def computer_control():
+    if session.get('role') != 'admin':
+        flash('Access denied. Admin privileges required.', 'danger')
+        return redirect(url_for('login_dashboard'))
+    return render_template('computer_control.html')
+
+@app.route('/get_computers/<lab_number>')
+@login_required
+def get_computers(lab_number):
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get the lab capacity and status
+        cursor.execute("SELECT capacity, status FROM labs WHERE roomNumber = %s", (lab_number,))
+        lab = cursor.fetchone()
+        
+        if not lab:
+            return jsonify({'error': 'Lab not found'}), 404
+            
+        # If lab is not available, return all computers as occupied
+        if lab['status'] != 'Available':
+            computers = []
+            for i in range(1, lab['capacity'] + 1):
+                computers.append({
+                    'number': i,
+                    'status': 'occupied'
+                })
+            return jsonify({'computers': computers})
+            
+        # Create a list of computers based on lab capacity
+        computers = []
+        for i in range(1, lab['capacity'] + 1):
+            # Check if this computer has an active session
+            cursor.execute("""
+                SELECT 1 FROM sit_in 
+                WHERE room_number = %s 
+                AND computer_number = %s 
+                AND logout_time IS NULL
+            """, (lab_number, i))
+            is_occupied = cursor.fetchone() is not None
+            
+            computers.append({
+                'number': i,
+                'status': 'occupied' if is_occupied else 'vacant'
+            })
+            
+        return jsonify({'computers': computers})
+        
+    except mysql.connector.Error as e:
+        return jsonify({'error': str(e)}), 500
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/toggle_computer_status', methods=['POST'])
+@login_required
+def toggle_computer_status():
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Access denied'}), 403
+        
+    data = request.get_json()
+    lab_number = data.get('lab_number')
+    computer_number = data.get('computer_number')
+    
+    if not lab_number or not computer_number:
+        return jsonify({'error': 'Missing required parameters'}), 400
+        
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        # Check current status
+        cursor.execute("""
+            SELECT 1 FROM sit_in 
+            WHERE room_number = %s 
+            AND computer_number = %s 
+            AND logout_time IS NULL
+        """, (lab_number, computer_number))
+        is_occupied = cursor.fetchone() is not None
+        
+        if is_occupied:
+            # If occupied, end the session
+            cursor.execute("""
+                UPDATE sit_in 
+                SET logout_time = NOW() 
+                WHERE room_number = %s 
+                AND computer_number = %s 
+                AND logout_time IS NULL
+            """, (lab_number, computer_number))
+        else:
+            # If vacant, create a dummy session
+            cursor.execute("""
+                INSERT INTO sit_in 
+                (student_id, purpose, room_number, computer_number, is_activated, login_time) 
+                VALUES ('ADMIN_BLOCK', 'BLOCKED', %s, %s, 1, NOW())
+            """, (lab_number, computer_number))
+            
+        conn.commit()
+        return jsonify({'success': True})
+        
+    except mysql.connector.Error as e:
+        return jsonify({'error': str(e)}), 500
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
             conn.close()
 
 if __name__ == '__main__':

@@ -29,6 +29,7 @@
                             <th>Name</th>
                             <th>Course</th>
                             <th>Room</th>
+                            <th>PC #</th>
                             <th>Purpose</th>
                             <th>Actions</th>
                         </tr>
@@ -41,10 +42,11 @@
                                 <td>{{ sit_in.firstname }} {{ sit_in.lastname }}</td>
                                 <td>{{ sit_in.course }}</td>
                                 <td>{{ sit_in.room_number }}</td>
+                                <td>{{ sit_in.computer_number if sit_in.computer_number else 'N/A' }}</td>
                                 <td>{{ sit_in.purpose }}</td>
                                 <td>
                                     <button class="btn btn-danger btn-sm" 
-                                            onclick="endSession('{{ sit_in.sit_in_id }}')">
+                                            onclick="endSession('{{ sit_in.sit_in_id }}', '{{ sit_in.student_id }}')">
                                         <i class="fas fa-sign-out-alt"></i> End Session
                                     </button>
                                 </td>
@@ -52,7 +54,7 @@
                             {% endfor %}
                         {% else %}
                             <tr>
-                                <td colspan="6" class="text-center">No active sessions</td>
+                                <td colspan="7" class="text-center">No active sessions</td>
                             </tr>
                         {% endif %}
                     </tbody>
@@ -63,11 +65,11 @@
 </div>
 
 <script>
-function endSession(sitInId) {
+function endSession(sitInId, studentId) {
     if (!confirm('Are you sure you want to end this session?')) {
         return;
     }
-    
+
     fetch(`/end_sit_in_session/${sitInId}`, {
         method: 'POST',
         headers: {
@@ -77,10 +79,27 @@ function endSession(sitInId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert(data.message);
-            location.reload();
+            // Remove the row from the table
+            const row = document.querySelector(`tr[data-sit-in-id="${sitInId}"]`);
+            if (row) {
+                row.remove();
+            }
+            
+            // Update total active count
+            const totalBadge = document.querySelector('.badge.bg-primary');
+            const currentTotal = parseInt(totalBadge.textContent.split(': ')[1]) - 1;
+            totalBadge.textContent = `Total Active: ${currentTotal}`;
+            
+            // Show success message
+            alert('Session ended successfully');
+            
+            // If no more active sessions, show the "No active sessions" message
+            const tbody = document.querySelector('tbody');
+            if (tbody.children.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center">No active sessions</td></tr>';
+            }
         } else {
-            alert('Error: ' + data.error);
+            alert('Error: ' + (data.error || 'Failed to end session'));
         }
     })
     .catch(error => {
@@ -88,5 +107,10 @@ function endSession(sitInId) {
         alert('Error ending session');
     });
 }
+
+// Add auto-refresh to keep the table updated
+setInterval(function() {
+    location.reload();
+}, 60000); // Refresh every minute
 </script>
 {% endblock %} 

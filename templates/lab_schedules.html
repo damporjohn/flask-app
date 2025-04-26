@@ -15,7 +15,7 @@
                 <i class="fas fa-plus"></i> Add New Schedule
             </button>
         </div>
-    </div>
+</div>
 
     <!-- Schedules Table -->
     <div class="card custom-card">
@@ -25,41 +25,41 @@
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-hover">
-                    <thead>
-                        <tr>
+        <thead>
+            <tr>
                             <th>Lab Room</th>
-                            <th>Days</th>
-                            <th>Start Time</th>
-                            <th>End Time</th>
-                            <th>Course</th>
-                            <th>Instructor</th>
+                <th>Days</th>
+                <th>Start Time</th>
+                <th>End Time</th>
+                <th>Course</th>
+                <th>Instructor</th>
                             <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+            </tr>
+        </thead>
+        <tbody>
                         {% if schedules %}
-                            {% for schedule in schedules %}
-                            <tr>
-                                <td>{{ schedule.roomNumber }}</td>
-                                <td>{{ schedule.days }}</td>
-                                <td>{{ schedule.start_time }}</td>
-                                <td>{{ schedule.end_time }}</td>
-                                <td>{{ schedule.course }}</td>
-                                <td>{{ schedule.instructor }}</td>
+            {% for schedule in schedules %}
+            <tr>
+                <td>{{ schedule.roomNumber }}</td>
+                <td>{{ schedule.days }}</td>
+                <td>{{ schedule.start_time }}</td>
+                <td>{{ schedule.end_time }}</td>
+                <td>{{ schedule.course }}</td>
+                <td>{{ schedule.instructor }}</td>
                                 <td>
                                     <button class="btn btn-danger btn-sm" onclick="deleteSchedule('{{ schedule.id }}')">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </td>
-                            </tr>
-                            {% endfor %}
+            </tr>
+            {% endfor %}
                         {% else %}
                             <tr>
                                 <td colspan="7" class="text-center">No schedules found</td>
                             </tr>
                         {% endif %}
-                    </tbody>
-                </table>
+        </tbody>
+    </table>
             </div>
         </div>
     </div>
@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert('Lab schedule added successfully!');
                     modalInstance.hide();
                     location.reload();
-                } else {
+        } else {
                     alert(data.error || 'Failed to add schedule');
                 }
             })
