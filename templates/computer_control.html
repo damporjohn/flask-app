@@ -17,14 +17,47 @@
         </div>
     </div>
 
-    <!-- Computer Grid -->
-    <div class="card custom-card">
-        <div class="card-header">
-            <h5 class="card-title mb-0">Computer Status</h5>
+    <!-- Computer Grid Container -->
+    <div class="row">
+        <!-- In Class Computers Section (Left) -->
+        <div class="col-md-4">
+            <div class="card custom-card mb-4">
+                <div class="card-header bg-warning bg-opacity-10">
+                    <h5 class="card-title mb-0">In Class</h5>
+                </div>
+                <div class="card-body">
+                    <div id="inClassComputerGrid" class="row g-4">
+                        <!-- In class computers will be dynamically added here -->
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            <div id="computerGrid" class="row g-4">
-                <!-- Computers will be dynamically added here -->
+
+        <!-- Occupied Computers Section (Middle) -->
+        <div class="col-md-4">
+            <div class="card custom-card mb-4">
+                <div class="card-header bg-danger bg-opacity-10">
+                    <h5 class="card-title mb-0">Occupied as Sit-In</h5>
+                </div>
+                <div class="card-body">
+                    <div id="occupiedComputerGrid" class="row g-4">
+                        <!-- Occupied computers will be dynamically added here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vacant Computers Section (Right) -->
+        <div class="col-md-4">
+            <div class="card custom-card mb-4">
+                <div class="card-header bg-success bg-opacity-10">
+                    <h5 class="card-title mb-0">Vacant</h5>
+                </div>
+                <div class="card-body">
+                    <div id="vacantComputerGrid" class="row g-4">
+                        <!-- Vacant computers will be dynamically added here -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -37,6 +70,8 @@
     padding: 15px;
     text-align: center;
     transition: all 0.3s ease;
+    height: 100%;
+    margin-bottom: 15px;
 }
 
 .computer-card:hover {
@@ -47,6 +82,7 @@
 .computer-status {
     font-size: 0.9rem;
     margin-top: 10px;
+    margin-bottom: 15px;
 }
 
 .status-vacant {
@@ -57,9 +93,71 @@
     color: #dc3545;
 }
 
+.status-in-class {
+    color: #ffc107;
+}
+
 .computer-icon {
     font-size: 2rem;
     margin-bottom: 10px;
+}
+
+.card {
+    height: 100%;
+}
+
+.card-body {
+    min-height: 200px;
+}
+
+@media (max-width: 768px) {
+    .col-md-4 {
+        margin-bottom: 20px;
+    }
+}
+
+.status-badge {
+    font-size: 0.8rem;
+    padding: 5px 10px;
+    border-radius: 15px;
+    display: inline-block;
+    margin: 5px 0;
+}
+
+.badge-vacant {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-occupied {
+    background-color: #dc3545;
+    color: white;
+}
+
+.badge-in-class {
+    background-color: #ffc107;
+    color: black;
+}
+
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.action-button {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.action-button i {
+    margin-right: 5px;
 }
 </style>
 
@@ -73,7 +171,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (selectedLab) {
             loadComputers(selectedLab);
         } else {
-            document.getElementById('computerGrid').innerHTML = '';
+            document.getElementById('vacantComputerGrid').innerHTML = '';
+            document.getElementById('occupiedComputerGrid').innerHTML = '';
+            document.getElementById('inClassComputerGrid').innerHTML = '';
         }
     });
 });
@@ -102,35 +202,118 @@ function loadComputers(labNumber) {
     fetch(`/get_computers/${labNumber}`)
         .then(response => response.json())
         .then(data => {
-            const computerGrid = document.getElementById('computerGrid');
-            computerGrid.innerHTML = '';
+            const vacantGrid = document.getElementById('vacantComputerGrid');
+            const occupiedGrid = document.getElementById('occupiedComputerGrid');
+            const inClassGrid = document.getElementById('inClassComputerGrid');
+            
+            // Clear all grids
+            vacantGrid.innerHTML = '';
+            occupiedGrid.innerHTML = '';
+            inClassGrid.innerHTML = '';
             
             if (data.computers && Array.isArray(data.computers)) {
-                data.computers.forEach(computer => {
+                // Separate computers into three categories
+                const vacant = data.computers.filter(c => c.status === 'vacant');
+                const occupied = data.computers.filter(c => c.status === 'occupied');
+                const inClass = data.computers.filter(c => c.status === 'in_class');
+                
+                console.log('Computers by status:', {
+                    vacant: vacant,
+                    occupied: occupied,
+                    inClass: inClass,
+                    allComputers: data.computers
+                });
+                
+                // Render vacant computers
+                vacant.forEach(computer => {
                     const col = document.createElement('div');
-                    col.className = 'col-md-3 col-sm-6';
-                    
-                    const statusClass = computer.status === 'vacant' ? 'status-vacant' : 'status-occupied';
-                    const buttonClass = computer.status === 'vacant' ? 'btn-success' : 'btn-danger';
-                    
+                    col.className = 'col-md-12';
                     col.innerHTML = `
                         <div class="computer-card">
                             <div class="computer-icon">
                                 <i class="fas fa-desktop"></i>
                             </div>
                             <h5>PC ${computer.number}</h5>
-                            <div class="computer-status ${statusClass}">
-                                Status: ${computer.status.toUpperCase()}
+                            <div class="computer-status status-vacant">
+                                <span class="status-badge badge-vacant">VACANT</span>
                             </div>
-                            <button onclick="toggleComputerStatus('${labNumber}', ${computer.number})" 
-                                    class="btn ${buttonClass} mt-3">
-                                Change Status
-                            </button>
+                            <div class="action-buttons">
+                                <button onclick="toggleComputerStatus('${labNumber}', ${computer.number}, 'in_class')" 
+                                        class="btn btn-warning action-button">
+                                    <i class="fas fa-chalkboard-teacher"></i> Mark for Class
+                                </button>
+                                <button onclick="toggleComputerStatus('${labNumber}', ${computer.number}, 'occupied')" 
+                                        class="btn btn-danger action-button">
+                                    <i class="fas fa-user"></i> Mark Occupied
+                                </button>
+                            </div>
                         </div>
                     `;
-                    
-                    computerGrid.appendChild(col);
+                    vacantGrid.appendChild(col);
                 });
+                
+                // Render occupied computers
+                occupied.forEach(computer => {
+                    const col = document.createElement('div');
+                    col.className = 'col-md-12';
+                    col.innerHTML = `
+                        <div class="computer-card">
+                            <div class="computer-icon">
+                                <i class="fas fa-desktop"></i>
+                            </div>
+                            <h5>PC ${computer.number}</h5>
+                            <div class="computer-status status-occupied">
+                                <span class="status-badge badge-occupied">OCCUPIED</span>
+                            </div>
+                            <div class="action-buttons">
+                                <button onclick="toggleComputerStatus('${labNumber}', ${computer.number}, 'vacant')" 
+                                        class="btn btn-success action-button">
+                                    <i class="fas fa-check"></i> Mark Vacant
+                                </button>
+                                <button onclick="toggleComputerStatus('${labNumber}', ${computer.number}, 'in_class')" 
+                                        class="btn btn-warning action-button">
+                                    <i class="fas fa-chalkboard-teacher"></i> Mark for Class
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    occupiedGrid.appendChild(col);
+                });
+                
+                // Render in-class computers
+                inClass.forEach(computer => {
+                    const col = document.createElement('div');
+                    col.className = 'col-md-12';
+                    col.innerHTML = `
+                        <div class="computer-card">
+                            <div class="computer-icon">
+                                <i class="fas fa-desktop"></i>
+                            </div>
+                            <h5>PC ${computer.number}</h5>
+                            <div class="computer-status status-in-class">
+                                <span class="status-badge badge-in-class">IN CLASS</span>
+                            </div>
+                            <div class="action-buttons">
+                                <button onclick="toggleComputerStatus('${labNumber}', ${computer.number}, 'vacant')" 
+                                        class="btn btn-success action-button">
+                                    <i class="fas fa-check"></i> Mark Vacant
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    inClassGrid.appendChild(col);
+                });
+
+                // Add empty state messages if no computers in a section
+                if (vacant.length === 0) {
+                    vacantGrid.innerHTML = '<div class="col-12 text-center text-muted">No vacant computers</div>';
+                }
+                if (occupied.length === 0) {
+                    occupiedGrid.innerHTML = '<div class="col-12 text-center text-muted">No occupied computers</div>';
+                }
+                if (inClass.length === 0) {
+                    inClassGrid.innerHTML = '<div class="col-12 text-center text-muted">No computers in class</div>';
+                }
             }
         })
         .catch(error => {
@@ -139,7 +322,16 @@ function loadComputers(labNumber) {
         });
 }
 
-function toggleComputerStatus(labNumber, computerNumber) {
+function toggleComputerStatus(labNumber, computerNumber, newStatus) {
+    // Add loading state to the button
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+    button.disabled = true;
+
+    // Ensure status is in lowercase
+    newStatus = newStatus.toLowerCase();
+
     fetch('/toggle_computer_status', {
         method: 'POST',
         headers: {
@@ -147,21 +339,117 @@ function toggleComputerStatus(labNumber, computerNumber) {
         },
         body: JSON.stringify({
             lab_number: labNumber,
-            computer_number: computerNumber
+            computer_number: computerNumber,
+            new_status: newStatus
         })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            loadComputers(labNumber); // Reload the computers to show updated status
+            // Show success message
+            const toast = document.createElement('div');
+            toast.className = 'toast align-items-center text-white bg-success border-0';
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        Computer ${computerNumber} has been moved to ${newStatus.replace('_', ' ').toUpperCase()}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            
+            // Remove toast after it's hidden
+            toast.addEventListener('hidden.bs.toast', function () {
+                toast.remove();
+            });
+
+            // Reload the computers to show updated status
+            loadComputers(labNumber);
         } else {
-            alert('Error: ' + (data.error || 'Failed to update computer status'));
+            // Show error message
+            const toast = document.createElement('div');
+            toast.className = 'toast align-items-center text-white bg-danger border-0';
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        Error: ${data.error || 'Failed to update computer status'}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            
+            // Remove toast after it's hidden
+            toast.addEventListener('hidden.bs.toast', function () {
+                toast.remove();
+            });
+
+            // Restore button state
+            button.innerHTML = originalText;
+            button.disabled = false;
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error updating computer status');
+        // Show error message
+        const toast = document.createElement('div');
+        toast.className = 'toast align-items-center text-white bg-danger border-0';
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    Error updating computer status
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+        
+        // Remove toast after it's hidden
+        toast.addEventListener('hidden.bs.toast', function () {
+            toast.remove();
+        });
+
+        // Restore button state
+        button.innerHTML = originalText;
+        button.disabled = false;
     });
 }
+
+// Add toast container to the page
+const toastContainer = document.createElement('div');
+toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+document.body.appendChild(toastContainer);
+
+// Initialize the computer status table when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/create_computer_status_table')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Computer status table initialized');
+            } else {
+                console.error('Failed to initialize computer status table:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error initializing computer status table:', error);
+        });
+});
 </script>
 {% endblock %} 

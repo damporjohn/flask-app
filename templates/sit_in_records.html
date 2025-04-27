@@ -11,7 +11,7 @@
         </div>
         <h2>Today's Sit-In Records</h2>
         <div>
-            <span class="badge bg-primary">Today's Records: {{ records|length }}</span>
+            <span class="badge bg-primary">Today's Records: {{ records|selectattr('student_id', 'ne', 'ADMIN_BLOCK')|selectattr('firstname', 'ne', 'None')|list|length }}</span>
         </div>
     </div>
 
@@ -63,22 +63,29 @@
                     <tbody>
                         {% if records %}
                             {% for record in records %}
-                            <tr>
-                                <td>{{ record.id }}</td>
-                                <td>{{ record.student_id }}</td>
-                                <td>{{ record.firstname }} {{ record.lastname }}</td>
-                                <td>{{ record.purpose if record.purpose else 'N/A' }}</td>
-                                <td>{{ record.room_number if record.room_number else 'N/A' }}</td>
-                                <td>{{ record.login_time.strftime('%I:%M %p') if record.login_time else 'N/A' }}</td>
-                                <td>
-                                    {% if record.logout_time %}
-                                        <span class="badge bg-secondary">Completed</span>
-                                    {% else %}
-                                        <span class="badge bg-success">Active</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
+                                {% if record.student_id != 'ADMIN_BLOCK' and record.firstname != 'None' %}
+                                <tr>
+                                    <td>{{ record.id }}</td>
+                                    <td>{{ record.student_id }}</td>
+                                    <td>{{ record.firstname }} {{ record.lastname }}</td>
+                                    <td>{{ record.purpose if record.purpose else 'N/A' }}</td>
+                                    <td>{{ record.room_number if record.room_number else 'N/A' }}</td>
+                                    <td>{{ record.login_time.strftime('%I:%M %p') if record.login_time else 'N/A' }}</td>
+                                    <td>
+                                        {% if record.logout_time %}
+                                            <span class="badge bg-secondary">Completed</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endif %}
                             {% endfor %}
+                            {% if not records|selectattr('student_id', 'ne', 'ADMIN_BLOCK')|selectattr('firstname', 'ne', 'None')|list %}
+                                <tr>
+                                    <td colspan="7" class="text-center">No valid records found for today</td>
+                                </tr>
+                            {% endif %}
                         {% else %}
                             <tr>
                                 <td colspan="7" class="text-center">No records found for today</td>
@@ -102,11 +109,15 @@ function loadTodayStats() {
     fetch('/get_today_stats')
         .then(response => response.json())
         .then(data => {
+            // Filter out ADMIN_BLOCK and None None records from statistics
+            const filteredLanguages = data.languages.filter(item => item.language !== 'BLOCKED');
+            const filteredLabs = data.labs.filter(item => item.room_number !== '517'); // Assuming 517 is the admin block room
+
             // Update languages chart
             const languagesData = {
-                labels: data.languages.map(item => item.language),
+                labels: filteredLanguages.map(item => item.language),
                 datasets: [{
-                    data: data.languages.map(item => item.count),
+                    data: filteredLanguages.map(item => item.count),
                     backgroundColor: [
                         '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
                         '#FF9F40', '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'
@@ -116,9 +127,9 @@ function loadTodayStats() {
 
             // Update labs chart
             const labsData = {
-                labels: data.labs.map(item => `Room ${item.room_number}`),
+                labels: filteredLabs.map(item => `Room ${item.room_number}`),
                 datasets: [{
-                    data: data.labs.map(item => item.count),
+                    data: filteredLabs.map(item => item.count),
                     backgroundColor: [
                         '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
                         '#FF9F40', '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'
