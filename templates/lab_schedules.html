@@ -17,17 +17,65 @@
         </div>
 </div>
 
-    <!-- Schedules Table -->
-    <div class="card custom-card">
-        <div class="card-header">
-            <h5 class="card-title mb-0">Current Laboratory Schedules</h5>
+    <!-- Filter Section -->
+    <div class="card custom-card mb-4">
+        <div class="card-body">
+            <div class="row align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Filter by Room</label>
+                    <select class="form-select" id="roomFilter">
+                        <option value="all">All Rooms</option>
+                        {% if rooms %}
+                            {% for room_number in rooms.keys()|sort %}
+                            <option value="{{ room_number }}">Lab Room {{ room_number }}</option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Filter by Day</label>
+                    <select class="form-select" id="dayFilter">
+                        <option value="all">All Days</option>
+                        <option value="M">Monday</option>
+                        <option value="T">Tuesday</option>
+                        <option value="W">Wednesday</option>
+                        <option value="TH">Thursday</option>
+                        <option value="F">Friday</option>
+                        <option value="S">Saturday</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-control" id="scheduleSearch" placeholder="Search by course or instructor...">
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-secondary w-100" onclick="resetFilters()">
+                        <i class="fas fa-sync-alt"></i> Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if schedules %}
+        <div id="scheduleCards">
+        {% for room_number, room_schedules in rooms.items()|sort %}
+        <div class="card custom-card mb-4 schedule-card" data-room="{{ room_number }}">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-door-open"></i> Laboratory Room {{ room_number }}
+                    </h5>
+                    <span class="badge bg-light text-primary">
+                        {{ room_schedules|length }} Schedule(s)
+                    </span>
+                </div>
         </div>
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-hover">
         <thead>
             <tr>
-                            <th>Lab Room</th>
                 <th>Days</th>
                 <th>Start Time</th>
                 <th>End Time</th>
@@ -37,10 +85,11 @@
             </tr>
         </thead>
         <tbody>
-                        {% if schedules %}
-            {% for schedule in schedules %}
-            <tr>
-                <td>{{ schedule.roomNumber }}</td>
+                            {% for schedule in room_schedules %}
+                            <tr class="schedule-row" 
+                                data-days="{{ schedule.days }}"
+                                data-course="{{ schedule.course }}"
+                                data-instructor="{{ schedule.instructor }}">
                 <td>{{ schedule.days }}</td>
                 <td>{{ schedule.start_time }}</td>
                 <td>{{ schedule.end_time }}</td>
@@ -53,16 +102,18 @@
                                 </td>
             </tr>
             {% endfor %}
-                        {% else %}
-                            <tr>
-                                <td colspan="7" class="text-center">No schedules found</td>
-                            </tr>
-                        {% endif %}
         </tbody>
     </table>
             </div>
         </div>
     </div>
+        {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> No schedules found. Click "Add New Schedule" to create one.
+        </div>
+    {% endif %}
 </div>
 
 <!-- Add Lab Schedule Modal -->
@@ -225,5 +276,144 @@ function deleteSchedule(scheduleId) {
         alert('An error occurred while deleting the schedule');
     });
 }
+
+// Add these new filter functions
+function filterSchedules() {
+    const roomFilter = document.getElementById('roomFilter').value;
+    const dayFilter = document.getElementById('dayFilter').value;
+    const searchText = document.getElementById('scheduleSearch').value.toLowerCase();
+
+    // Filter cards by room
+    document.querySelectorAll('.schedule-card').forEach(card => {
+        const roomNumber = card.dataset.room;
+        const shouldShowRoom = roomFilter === 'all' || roomFilter === roomNumber;
+        
+        // Filter rows within each card
+        const rows = card.querySelectorAll('.schedule-row');
+        let visibleRows = 0;
+
+        rows.forEach(row => {
+            const days = row.dataset.days;
+            const course = row.dataset.course.toLowerCase();
+            const instructor = row.dataset.instructor.toLowerCase();
+            
+            const matchesDay = dayFilter === 'all' || days.includes(dayFilter);
+            const matchesSearch = searchText === '' || 
+                                course.includes(searchText) || 
+                                instructor.includes(searchText);
+
+            if (matchesDay && matchesSearch) {
+                row.style.display = '';
+                visibleRows++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Show/hide the entire card based on filters
+        card.style.display = (shouldShowRoom && visibleRows > 0) ? '' : 'none';
+        
+        // Update the schedule count badge
+        const badge = card.querySelector('.badge');
+        if (badge) {
+            badge.textContent = `${visibleRows} Schedule(s)`;
+        }
+    });
+}
+
+function resetFilters() {
+    document.getElementById('roomFilter').value = 'all';
+    document.getElementById('dayFilter').value = 'all';
+    document.getElementById('scheduleSearch').value = '';
+    filterSchedules();
+}
+
+// Add event listeners for filters
+document.addEventListener('DOMContentLoaded', function() {
+    // Existing DOMContentLoaded code remains...
+
+    // Add filter event listeners
+    document.getElementById('roomFilter').addEventListener('change', filterSchedules);
+    document.getElementById('dayFilter').addEventListener('change', filterSchedules);
+    document.getElementById('scheduleSearch').addEventListener('input', filterSchedules);
+});
 </script>
+
+<style>
+.custom-card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 1.5rem;
+}
+
+.custom-card .card-header {
+    border-bottom: none;
+    padding: 1rem 1.5rem;
+}
+
+.table th {
+    font-weight: 600;
+    border-top: none;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.badge {
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+}
+
+.alert {
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+}
+
+.modal-content {
+    border-radius: 8px;
+    border: none;
+}
+
+.form-check-inline {
+    margin-right: 1rem;
+}
+
+.form-check-input:checked {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.form-select, .form-control {
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    padding: 0.5rem;
+}
+
+.form-select:focus, .form-control:focus {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+#scheduleSearch {
+    padding-left: 2rem;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23999' class='bi bi-search' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z'%3E%3C/path%3E%3C/svg%3E") no-repeat 0.75rem center;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
+}
+</style>
 {% endblock %}

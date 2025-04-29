@@ -45,10 +45,16 @@
                                 <td>{{ sit_in.computer_number if sit_in.computer_number else 'N/A' }}</td>
                                 <td>{{ sit_in.purpose }}</td>
                                 <td>
-                                    <button class="btn btn-danger btn-sm" 
-                                            onclick="endSession('{{ sit_in.sit_in_id }}', '{{ sit_in.student_id }}')">
-                                        <i class="fas fa-sign-out-alt"></i> End Session
-                                    </button>
+                                    <div class="btn-group">
+                                        <button class="btn btn-success btn-sm me-2" 
+                                                onclick="endSessionWithReward('{{ sit_in.sit_in_id }}', '{{ sit_in.student_id }}')">
+                                            <i class="fas fa-star"></i> End with Reward
+                                        </button>
+                                        <button class="btn btn-danger btn-sm" 
+                                                onclick="endSession('{{ sit_in.sit_in_id }}', '{{ sit_in.student_id }}')">
+                                            <i class="fas fa-sign-out-alt"></i> End Session
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -65,8 +71,40 @@
 </div>
 
 <script>
-function endSession(sitInId, studentId) {
-    if (!confirm('Are you sure you want to end this session?')) {
+function endSessionWithReward(sitInId, studentId) {
+    if (!confirm('Are you sure you want to end this session with a reward point?')) {
+        return;
+    }
+
+    // First award the point
+    fetch('/award_points', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            student_id: studentId,
+            points: 1,
+            reason: 'Sit-in session completion reward'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // If point was awarded successfully, end the session
+            endSession(sitInId, studentId, true);
+        } else {
+            alert('Error awarding points: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error awarding points');
+    });
+}
+
+function endSession(sitInId, studentId, wasRewarded = false) {
+    if (!wasRewarded && !confirm('Are you sure you want to end this session without a reward?')) {
         return;
     }
 
@@ -91,7 +129,7 @@ function endSession(sitInId, studentId) {
             totalBadge.textContent = `Total Active: ${currentTotal}`;
             
             // Show success message
-            alert('Session ended successfully');
+            alert(wasRewarded ? 'Session ended successfully with reward!' : 'Session ended successfully');
             
             // If no more active sessions, show the "No active sessions" message
             const tbody = document.querySelector('tbody');

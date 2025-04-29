@@ -18,46 +18,13 @@
     </div>
 
     <!-- Computer Grid Container -->
-    <div class="row">
-        <!-- In Class Computers Section (Left) -->
-        <div class="col-md-4">
-            <div class="card custom-card mb-4">
-                <div class="card-header bg-warning bg-opacity-10">
-                    <h5 class="card-title mb-0">In Class</h5>
-                </div>
-                <div class="card-body">
-                    <div id="inClassComputerGrid" class="row g-4">
-                        <!-- In class computers will be dynamically added here -->
-                    </div>
-                </div>
-            </div>
+    <div class="card custom-card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Lab Computers</h5>
         </div>
-
-        <!-- Occupied Computers Section (Middle) -->
-        <div class="col-md-4">
-            <div class="card custom-card mb-4">
-                <div class="card-header bg-danger bg-opacity-10">
-                    <h5 class="card-title mb-0">Occupied as Sit-In</h5>
-                </div>
-                <div class="card-body">
-                    <div id="occupiedComputerGrid" class="row g-4">
-                        <!-- Occupied computers will be dynamically added here -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Vacant Computers Section (Right) -->
-        <div class="col-md-4">
-            <div class="card custom-card mb-4">
-                <div class="card-header bg-success bg-opacity-10">
-                    <h5 class="card-title mb-0">Vacant</h5>
-                </div>
-                <div class="card-body">
-                    <div id="vacantComputerGrid" class="row g-4">
-                        <!-- Vacant computers will be dynamically added here -->
-                    </div>
-                </div>
+        <div class="card-body">
+            <div id="computerGrid" class="row g-4">
+                <!-- Computers will be dynamically added here -->
             </div>
         </div>
     </div>
@@ -65,99 +32,205 @@
 
 <style>
 .computer-card {
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 15px;
+    padding: 20px;
     text-align: center;
     transition: all 0.3s ease;
     height: 100%;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
+    background: var(--gunmetal-3);
+    cursor: pointer;
+    position: relative;
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .computer-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
 .computer-status {
-    font-size: 0.9rem;
-    margin-top: 10px;
-    margin-bottom: 15px;
-}
-
-.status-vacant {
-    color: #28a745;
-}
-
-.status-occupied {
-    color: #dc3545;
-}
-
-.status-in-class {
-    color: #ffc107;
+    font-size: 0.85rem;
+    padding: 6px 12px;
+    border-radius: 15px;
+    display: inline-block;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1;
+    font-weight: 500;
+    letter-spacing: 0.5px;
 }
 
 .computer-icon {
-    font-size: 2rem;
-    margin-bottom: 10px;
+    font-size: 2.5rem;
+    margin-bottom: 15px;
+    color: var(--text-light);
+    position: relative;
+    z-index: 1;
 }
 
-.card {
-    height: 100%;
+.computer-card h5 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-light);
+    position: relative;
+    z-index: 1;
 }
 
+.tooltip-content {
+    display: none;
+    position: absolute;
+    background: #1a1f24;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    width: 280px;
+    z-index: 1000;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    opacity: 1;
+    backdrop-filter: none;
+    pointer-events: auto;
+}
+
+.tooltip-content::before {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 8px 8px 0 8px;
+    border-style: solid;
+    border-color: #1a1f24 transparent transparent transparent;
+}
+
+.computer-card:hover .tooltip-content {
+    display: block;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+.student-info {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin: 10px 0;
+    word-break: break-word;
+    line-height: 1.4;
+}
+
+.timer {
+    font-family: monospace;
+    font-size: 1.1rem;
+    color: var(--accent);
+    margin: 8px 0;
+    background: rgba(0,0,0,0.3);
+    padding: 8px;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+#computerGrid {
+    position: relative;
+    z-index: 1;
+    padding: 10px;
+}
+
+#computerGrid .col-md-2,
+#computerGrid .col-sm-3,
+#computerGrid .col-4 {
+    margin-bottom: 25px;
+    padding: 0 10px;
+}
+
+/* Status badge colors with improved contrast */
+.status-vacant {
+    background: rgba(76, 175, 80, 0.25);
+    color: #4caf50;
+    border: 1px solid rgba(76, 175, 80, 0.4);
+}
+
+.status-pending {
+    background: rgba(255, 152, 0, 0.25);
+    color: #ff9800;
+    border: 1px solid rgba(255, 152, 0, 0.4);
+}
+
+.status-approved {
+    background: rgba(33, 150, 243, 0.25);
+    color: #2196f3;
+    border: 1px solid rgba(33, 150, 243, 0.4);
+}
+
+.status-sit-in {
+    background: rgba(244, 67, 54, 0.25);
+    color: #f44336;
+    border: 1px solid rgba(244, 67, 54, 0.4);
+}
+
+.status-reserved {
+    background: rgba(156, 39, 176, 0.25);
+    color: #9c27b0;
+    border: 1px solid rgba(156, 39, 176, 0.4);
+}
+
+/* Ensure tooltips don't get cut off */
 .card-body {
-    min-height: 200px;
+    overflow: visible;
+    position: relative;
+    padding: 20px;
 }
 
-@media (max-width: 768px) {
-    .col-md-4 {
-        margin-bottom: 20px;
+/* Grid container adjustments */
+.container {
+    max-width: 1400px;
+    padding: 20px;
+}
+
+/* Card header styling */
+.card-header {
+    background: var(--gunmetal-2);
+    border-bottom: 1px solid var(--border-color);
+    padding: 15px 20px;
+}
+
+.card-header h5 {
+    margin: 0;
+    color: var(--text-light);
+    font-weight: 600;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -40%);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
     }
 }
 
-.status-badge {
-    font-size: 0.8rem;
-    padding: 5px 10px;
-    border-radius: 15px;
-    display: inline-block;
-    margin: 5px 0;
+.computer-card:hover .computer-icon,
+.computer-card:hover .computer-status,
+.computer-card:hover h5 {
+    opacity: 0.3;
+    transition: opacity 0.2s ease;
 }
 
-.badge-vacant {
-    background-color: #28a745;
-    color: white;
-}
-
-.badge-occupied {
-    background-color: #dc3545;
-    color: white;
-}
-
-.badge-in-class {
-    background-color: #ffc107;
-    color: black;
-}
-
-.action-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 10px;
-}
-
-.action-button {
-    width: 100%;
-    padding: 8px 12px;
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-}
-
-.action-button i {
-    margin-right: 5px;
+.computer-card .computer-icon,
+.computer-card .computer-status,
+.computer-card h5 {
+    opacity: 1;
+    transition: opacity 0.2s ease;
 }
 </style>
 
@@ -165,15 +238,12 @@
 document.addEventListener('DOMContentLoaded', function() {
     loadLabs();
     
-    // Add event listener for lab selection
     document.getElementById('labSelect').addEventListener('change', function() {
         const selectedLab = this.value;
         if (selectedLab) {
             loadComputers(selectedLab);
         } else {
-            document.getElementById('vacantComputerGrid').innerHTML = '';
-            document.getElementById('occupiedComputerGrid').innerHTML = '';
-            document.getElementById('inClassComputerGrid').innerHTML = '';
+            clearGrid();
         }
     });
 });
@@ -198,122 +268,71 @@ function loadLabs() {
         });
 }
 
+function clearGrid() {
+    document.getElementById('computerGrid').innerHTML = '';
+}
+
 function loadComputers(labNumber) {
     fetch(`/get_computers/${labNumber}`)
         .then(response => response.json())
         .then(data => {
-            const vacantGrid = document.getElementById('vacantComputerGrid');
-            const occupiedGrid = document.getElementById('occupiedComputerGrid');
-            const inClassGrid = document.getElementById('inClassComputerGrid');
-            
-            // Clear all grids
-            vacantGrid.innerHTML = '';
-            occupiedGrid.innerHTML = '';
-            inClassGrid.innerHTML = '';
+            clearGrid();
             
             if (data.computers && Array.isArray(data.computers)) {
-                // Separate computers into three categories
-                const vacant = data.computers.filter(c => c.status === 'vacant');
-                const occupied = data.computers.filter(c => c.status === 'occupied');
-                const inClass = data.computers.filter(c => c.status === 'in_class');
+                const grid = document.getElementById('computerGrid');
                 
-                console.log('Computers by status:', {
-                    vacant: vacant,
-                    occupied: occupied,
-                    inClass: inClass,
-                    allComputers: data.computers
-                });
-                
-                // Render vacant computers
-                vacant.forEach(computer => {
+                data.computers.forEach(computer => {
                     const col = document.createElement('div');
-                    col.className = 'col-md-12';
-                    col.innerHTML = `
-                        <div class="computer-card">
-                            <div class="computer-icon">
-                                <i class="fas fa-desktop"></i>
+                    col.className = 'col-md-2 col-sm-3 col-4';
+                    
+                    let studentInfo = '';
+                    let timer = '';
+                    let statusText = computer.status;
+                    
+                    // Update status text based on the actual status
+                    if (computer.status === 'approved' && computer.used === 1) {
+                        statusText = 'occupied';
+                    } else if (computer.status === 'approved' && computer.used === 0) {
+                        statusText = 'reserved';
+                    } else if (computer.status === 'pending') {
+                        statusText = 'pending';
+                    }
+                    
+                    if (computer.student) {
+                        studentInfo = `
+                            <div class="student-info">
+                                ${computer.student.id} - ${computer.student.name}<br>
+                                ${computer.student.purpose}
                             </div>
-                            <h5>PC ${computer.number}</h5>
-                            <div class="computer-status status-vacant">
-                                <span class="status-badge badge-vacant">VACANT</span>
-                            </div>
-                            <div class="action-buttons">
-                                <button onclick="toggleComputerStatus('${labNumber}', ${computer.number}, 'in_class')" 
-                                        class="btn btn-warning action-button">
-                                    <i class="fas fa-chalkboard-teacher"></i> Mark for Class
-                                </button>
-                                <button onclick="toggleComputerStatus('${labNumber}', ${computer.number}, 'occupied')" 
-                                        class="btn btn-danger action-button">
-                                    <i class="fas fa-user"></i> Mark Occupied
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    vacantGrid.appendChild(col);
-                });
-                
-                // Render occupied computers
-                occupied.forEach(computer => {
-                    const col = document.createElement('div');
-                    col.className = 'col-md-12';
-                    col.innerHTML = `
-                        <div class="computer-card">
-                            <div class="computer-icon">
-                                <i class="fas fa-desktop"></i>
-                            </div>
-                            <h5>PC ${computer.number}</h5>
-                            <div class="computer-status status-occupied">
-                                <span class="status-badge badge-occupied">OCCUPIED</span>
-                            </div>
-                            <div class="action-buttons">
-                                <button onclick="toggleComputerStatus('${labNumber}', ${computer.number}, 'vacant')" 
-                                        class="btn btn-success action-button">
-                                    <i class="fas fa-check"></i> Mark Vacant
-                                </button>
-                                <button onclick="toggleComputerStatus('${labNumber}', ${computer.number}, 'in_class')" 
-                                        class="btn btn-warning action-button">
-                                    <i class="fas fa-chalkboard-teacher"></i> Mark for Class
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    occupiedGrid.appendChild(col);
-                });
-                
-                // Render in-class computers
-                inClass.forEach(computer => {
-                    const col = document.createElement('div');
-                    col.className = 'col-md-12';
-                    col.innerHTML = `
-                        <div class="computer-card">
-                            <div class="computer-icon">
-                                <i class="fas fa-desktop"></i>
-                            </div>
-                            <h5>PC ${computer.number}</h5>
-                            <div class="computer-status status-in-class">
-                                <span class="status-badge badge-in-class">IN CLASS</span>
-                            </div>
-                            <div class="action-buttons">
-                                <button onclick="toggleComputerStatus('${labNumber}', ${computer.number}, 'vacant')" 
-                                        class="btn btn-success action-button">
-                                    <i class="fas fa-check"></i> Mark Vacant
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    inClassGrid.appendChild(col);
-                });
+                        `;
+                        if (computer.start_time && statusText === 'occupied') {
+                            timer = `<div class="timer" data-start="${computer.start_time}">00:00:00</div>`;
+                        }
+                    }
 
-                // Add empty state messages if no computers in a section
-                if (vacant.length === 0) {
-                    vacantGrid.innerHTML = '<div class="col-12 text-center text-muted">No vacant computers</div>';
-                }
-                if (occupied.length === 0) {
-                    occupiedGrid.innerHTML = '<div class="col-12 text-center text-muted">No occupied computers</div>';
-                }
-                if (inClass.length === 0) {
-                    inClassGrid.innerHTML = '<div class="col-12 text-center text-muted">No computers in class</div>';
-                }
+                    let tooltipContent = `
+                        <div class="tooltip-content">
+                            <strong>Status:</strong> ${statusText.toUpperCase()}<br>
+                            ${studentInfo}
+                            ${timer}
+                        </div>
+                    `;
+                    
+                    col.innerHTML = `
+                        <div class="computer-card">
+                            <div class="computer-icon">
+                                <i class="fas fa-desktop"></i>
+                            </div>
+                            <h5>PC ${computer.number}</h5>
+                            <div class="computer-status status-${statusText}">
+                                ${statusText.toUpperCase()}
+                            </div>
+                            ${tooltipContent}
+                        </div>
+                    `;
+                    
+                    grid.appendChild(col);
+                });
             }
         })
         .catch(error => {
@@ -322,134 +341,84 @@ function loadComputers(labNumber) {
         });
 }
 
-function toggleComputerStatus(labNumber, computerNumber, newStatus) {
-    // Add loading state to the button
-    const button = event.target;
-    const originalText = button.innerHTML;
-    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
-    button.disabled = true;
+function endSessionWithReward(sessionId, studentId) {
+    if (!confirm('Are you sure you want to end this session with a reward point?')) {
+        return;
+    }
 
-    // Ensure status is in lowercase
-    newStatus = newStatus.toLowerCase();
-
-    fetch('/toggle_computer_status', {
+    fetch('/award_points', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            lab_number: labNumber,
-            computer_number: computerNumber,
-            new_status: newStatus
+            student_id: studentId,
+            points: 1,
+            reason: 'Sit-in session completion reward'
         })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Show success message
-            const toast = document.createElement('div');
-            toast.className = 'toast align-items-center text-white bg-success border-0';
-            toast.setAttribute('role', 'alert');
-            toast.setAttribute('aria-live', 'assertive');
-            toast.setAttribute('aria-atomic', 'true');
-            toast.innerHTML = `
-                <div class="d-flex">
-                    <div class="toast-body">
-                        Computer ${computerNumber} has been moved to ${newStatus.replace('_', ' ').toUpperCase()}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                </div>
-            `;
-            document.body.appendChild(toast);
-            const bsToast = new bootstrap.Toast(toast);
-            bsToast.show();
-            
-            // Remove toast after it's hidden
-            toast.addEventListener('hidden.bs.toast', function () {
-                toast.remove();
-            });
-
-            // Reload the computers to show updated status
-            loadComputers(labNumber);
+            endSession(sessionId, studentId, true);
         } else {
-            // Show error message
-            const toast = document.createElement('div');
-            toast.className = 'toast align-items-center text-white bg-danger border-0';
-            toast.setAttribute('role', 'alert');
-            toast.setAttribute('aria-live', 'assertive');
-            toast.setAttribute('aria-atomic', 'true');
-            toast.innerHTML = `
-                <div class="d-flex">
-                    <div class="toast-body">
-                        Error: ${data.error || 'Failed to update computer status'}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                </div>
-            `;
-            document.body.appendChild(toast);
-            const bsToast = new bootstrap.Toast(toast);
-            bsToast.show();
-            
-            // Remove toast after it's hidden
-            toast.addEventListener('hidden.bs.toast', function () {
-                toast.remove();
-            });
-
-            // Restore button state
-            button.innerHTML = originalText;
-            button.disabled = false;
+            alert('Error awarding points: ' + (data.error || 'Unknown error'));
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        // Show error message
-        const toast = document.createElement('div');
-        toast.className = 'toast align-items-center text-white bg-danger border-0';
-        toast.setAttribute('role', 'alert');
-        toast.setAttribute('aria-live', 'assertive');
-        toast.setAttribute('aria-atomic', 'true');
-        toast.innerHTML = `
-            <div class="d-flex">
-                <div class="toast-body">
-                    Error updating computer status
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-            </div>
-        `;
-        document.body.appendChild(toast);
-        const bsToast = new bootstrap.Toast(toast);
-        bsToast.show();
-        
-        // Remove toast after it's hidden
-        toast.addEventListener('hidden.bs.toast', function () {
-            toast.remove();
-        });
-
-        // Restore button state
-        button.innerHTML = originalText;
-        button.disabled = false;
+        alert('Error awarding points');
     });
 }
 
-// Add toast container to the page
-const toastContainer = document.createElement('div');
-toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
-document.body.appendChild(toastContainer);
+function endSession(sessionId, studentId, wasRewarded = false) {
+    if (!wasRewarded && !confirm('Are you sure you want to end this session without a reward?')) {
+        return;
+    }
 
-// Initialize the computer status table when the page loads
-document.addEventListener('DOMContentLoaded', function() {
-    fetch('/create_computer_status_table')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                console.log('Computer status table initialized');
-            } else {
-                console.error('Failed to initialize computer status table:', data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error initializing computer status table:', error);
-        });
-});
+    fetch(`/end_sit_in_session/${sessionId}`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const labSelect = document.getElementById('labSelect');
+            loadComputers(labSelect.value);
+            alert(wasRewarded ? 'Session ended successfully with reward!' : 'Session ended successfully');
+        } else {
+            alert('Error: ' + (data.error || 'Failed to end session'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error ending session');
+    });
+}
+
+// Update timers every second
+setInterval(function() {
+    document.querySelectorAll('.timer').forEach(timer => {
+        const startTime = new Date(timer.dataset.start);
+        const now = new Date();
+        const diff = now - startTime;
+        
+        const hours = Math.floor(diff / 3600000);
+        const minutes = Math.floor((diff % 3600000) / 60000);
+        const seconds = Math.floor((diff % 60000) / 1000);
+        
+        timer.textContent = 
+            String(hours).padStart(2, '0') + ':' +
+            String(minutes).padStart(2, '0') + ':' +
+            String(seconds).padStart(2, '0');
+    });
+}, 1000);
+
+// Auto-refresh computers every 30 seconds
+setInterval(function() {
+    const labSelect = document.getElementById('labSelect');
+    if (labSelect.value) {
+        loadComputers(labSelect.value);
+    }
+}, 30000);
 </script>
 {% endblock %} 

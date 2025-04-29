@@ -270,6 +270,81 @@
     .mt-3 {
         margin-top: 1rem;
     }
+
+    .computer-grid {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: var(--gunmetal-3);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+
+    .computer-btn {
+        width: 100%;
+        padding: 1rem;
+        margin: 0.25rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 80px;
+    }
+
+    .computer-btn.vacant {
+        background: rgba(76, 175, 80, 0.2);
+        color: var(--success);
+        border: 1px solid rgba(76, 175, 80, 0.3);
+    }
+
+    .computer-btn.vacant:hover {
+        background: rgba(76, 175, 80, 0.3);
+        transform: translateY(-2px);
+    }
+
+    .computer-btn.pending,
+    .computer-btn.approved,
+    .computer-btn.sit-in {
+        background: rgba(0, 0, 0, 0.2);
+        color: var(--text-muted);
+        border: 1px solid var(--border-color);
+        cursor: not-allowed;
+    }
+
+    .computer-btn.selected {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 3px var(--accent);
+        background: rgba(77, 182, 172, 0.2);
+        border-color: var(--accent);
+    }
+
+    .computer-status {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: rgba(0,0,0,0.2);
+    }
+
+    .computer-number {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+
+    .computer-info {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        text-align: center;
+    }
 </style>
 
 <!-- Hamburger Button -->
@@ -332,12 +407,21 @@
                 </div>
                 <div class="form-group">
                     <label for="room" class="form-label">Room</label>
-                    <select class="form-control" id="room" name="room" required>
+                    <select class="form-control" id="room" name="room" required onchange="loadComputers(this.value)">
                         <option value="">Select Room</option>
                         {% for lab in labs %}
                             <option value="{{ lab.roomNumber }}">Room {{ lab.roomNumber }}</option>
                         {% endfor %}
                     </select>
+                </div>
+                <div class="form-group" id="computerGroup" style="display: none;">
+                    <label for="computer" class="form-label">Computer</label>
+                    <div class="computer-grid">
+                        <div id="computerButtons" class="row g-2">
+                            <!-- Computer buttons will be loaded here -->
+                        </div>
+                    </div>
+                    <input type="hidden" id="selectedComputer" name="computer_number" required>
                 </div>
                 <div class="form-group">
                     <label for="date" class="form-label">Date</label>
@@ -394,5 +478,90 @@
             return true;
         };
     });    
+
+    function loadComputers(roomNumber) {
+        if (!roomNumber) {
+            document.getElementById('computerGroup').style.display = 'none';
+            return;
+        }
+
+        fetch(`/get_computers/${roomNumber}`)
+            .then(response => response.json())
+            .then(data => {
+                const computerGroup = document.getElementById('computerGroup');
+                const computerButtons = document.getElementById('computerButtons');
+                const selectedComputer = document.getElementById('selectedComputer');
+                
+                computerButtons.innerHTML = '';
+                selectedComputer.value = '';
+                
+                if (data.computers && Array.isArray(data.computers)) {
+                    data.computers.forEach(computer => {
+                        const col = document.createElement('div');
+                        col.className = 'col-md-3 col-sm-4 col-6';
+                        
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = `computer-btn ${computer.status}`;
+                        button.disabled = computer.status !== 'vacant';
+                        button.onclick = () => selectComputer(computer.number);
+                        
+                        let statusText = computer.status.toUpperCase();
+                        if (computer.student) {
+                            statusText = `${computer.student.name} (${computer.status.toUpperCase()})`;
+                        }
+                        
+                        button.innerHTML = `
+                            <div class="computer-number">PC ${computer.number}</div>
+                            <div class="computer-status">${computer.status}</div>
+                            <div class="computer-info">${statusText}</div>
+                        `;
+                        
+                        col.appendChild(button);
+                        computerButtons.appendChild(col);
+                    });
+                    
+                    computerGroup.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading computers:', error);
+                alert('Error loading computers');
+            });
+    }
+
+    function selectComputer(number) {
+        const selectedComputer = document.getElementById('selectedComputer');
+        const buttons = document.querySelectorAll('.computer-btn');
+        
+        buttons.forEach(btn => {
+            btn.classList.remove('selected');
+            const computerNumber = btn.querySelector('.computer-number').textContent.trim();
+            if (computerNumber === `PC ${number}`) {
+                btn.classList.add('selected');
+            }
+        });
+        
+        selectedComputer.value = number;
+    }
+
+    document.getElementById('reservationForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const purpose = formData.get('purpose');
+        const room = formData.get('room');
+        const date = formData.get('date');
+        const time = formData.get('time');
+        const computerNumber = formData.get('computer_number');
+        
+        if (!purpose || !room || !date || !time || !computerNumber) {
+            alert('Please fill in all fields and select a computer');
+            return;
+        }
+        
+        // Submit the form
+        this.submit();
+    });
 </script>
 {% endblock %}

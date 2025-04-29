@@ -29,6 +29,7 @@
                             <th>Name</th>
                             <th>Purpose</th>
                             <th>Room</th>
+                            <th>Computer</th>
                             <th>Date</th>
                             <th>Time</th>
                             <th>Status</th>
@@ -67,6 +68,7 @@
                             <th>Name</th>
                             <th>Purpose</th>
                             <th>Room</th>
+                            <th>Computer</th>
                             <th>Date</th>
                             <th>Time</th>
                             <th>Status</th>
@@ -84,37 +86,6 @@
     </div>
 </div>
 
-<!-- Computer Selection Modal -->
-<div class="modal fade" id="computerSelectionModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Select Computer</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="computerSelectionForm">
-                    <input type="hidden" id="selectedReservationId">
-                    <input type="hidden" id="selectedStudentId">
-                    <input type="hidden" id="selectedPurpose">
-                    <input type="hidden" id="selectedRoom">
-                    
-                    <div class="mb-3">
-                        <label for="computerNumber" class="form-label">Computer Number:</label>
-                        <input type="number" class="form-control" id="computerNumber" 
-                               min="1" required>
-                        <small class="text-muted">Please enter a valid computer number</small>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-play"></i> Activate Session
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
 function loadReservations() {
     fetch('/get_reservations')
@@ -124,8 +95,8 @@ function loadReservations() {
             const historyBody = document.getElementById('historyTableBody');
             
             if (!data.reservations || data.reservations.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="8" class="text-center">No reservations found</td></tr>';
-                historyBody.innerHTML = '<tr><td colspan="8" class="text-center">No history found</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="9" class="text-center">No reservations found</td></tr>';
+                historyBody.innerHTML = '<tr><td colspan="9" class="text-center">No history found</td></tr>';
                 return;
             }
 
@@ -185,6 +156,7 @@ function loadReservations() {
                         <td>${reservation.firstname} ${reservation.lastname}</td>
                         <td>${reservation.purpose}</td>
                         <td>${reservation.room_number}</td>
+                        <td>PC ${reservation.computer_number}</td>
                         <td>${requestedDate}</td>
                         <td>${reservation.requested_time}</td>
                         <td>
@@ -222,6 +194,7 @@ function loadReservations() {
                         <td>${reservation.firstname} ${reservation.lastname}</td>
                         <td>${reservation.purpose}</td>
                         <td>${reservation.room_number}</td>
+                        <td>PC ${reservation.computer_number}</td>
                         <td>${requestedDate}</td>
                         <td>${requestedTime}</td>
                         <td>
@@ -242,29 +215,51 @@ function loadReservations() {
         .catch(error => {
             console.error('Error:', error);
             document.getElementById('reservationsTableBody').innerHTML = 
-                '<tr><td colspan="8" class="text-center text-danger">Error loading reservations</td></tr>';
+                '<tr><td colspan="9" class="text-center text-danger">Error loading reservations</td></tr>';
             document.getElementById('historyTableBody').innerHTML = 
-                '<tr><td colspan="8" class="text-center text-danger">Error loading history</td></tr>';
+                '<tr><td colspan="9" class="text-center text-danger">Error loading history</td></tr>';
         });
 }
 
-function activateSession(reservationId) {
-    if (!confirm('Are you sure you want to activate this session?')) {
-        return;
+async function activateSession(reservationId) {
+    try {
+        const response = await fetch(`/activate_sit_in/${reservationId}`, {
+            method: 'POST'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to activate session');
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Update computer status to occupied
+            const computerResponse = await fetch('/toggle_computer_status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    room_number: result.room_number,
+                    computer_number: result.computer_number,
+                    status: 'occupied'
+                })
+            });
+            
+            if (!computerResponse.ok) {
+                throw new Error('Failed to update computer status');
+            }
+            
+            alert('Session activated successfully');
+            loadReservations(); // Refresh the reservations list
+        } else {
+            throw new Error(result.error || 'Failed to activate session');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert(error.message);
     }
-    
-    // Get the reservation details from the table row
-    const row = document.querySelector(`tr[data-reservation-id="${reservationId}"]`);
-    
-    // Store the reservation details in the modal form
-    document.getElementById('selectedReservationId').value = reservationId;
-    document.getElementById('selectedStudentId').value = row.cells[0].textContent;
-    document.getElementById('selectedPurpose').value = row.cells[2].textContent;
-    document.getElementById('selectedRoom').value = row.cells[3].textContent;
-    
-    // Show the computer selection modal
-    const modal = new bootstrap.Modal(document.getElementById('computerSelectionModal'));
-    modal.show();
 }
 
 function approveReservation(reservationId) {
@@ -329,6 +324,7 @@ function exportToExcel() {
         'Name',
         'Purpose',
         'Room',
+        'Computer',
         'Requested Date',
         'Requested Time',
         'Status',
@@ -343,11 +339,12 @@ function exportToExcel() {
             cells[1].textContent.trim(), // Name
             cells[2].textContent.trim(), // Purpose
             cells[3].textContent.trim(), // Room
-            cells[4].textContent.trim(), // Requested Date
-            cells[5].textContent.trim(), // Requested Time
-            cells[6].textContent.trim(), // Status
-            cells[7].querySelector('div:first-child').textContent.replace('Requested: ', '').trim(),
-            cells[7].querySelector('div:last-child').textContent.replace('Response: ', '').trim()
+            cells[4].textContent.trim(), // Computer
+            cells[5].textContent.trim(), // Requested Date
+            cells[6].textContent.trim(), // Requested Time
+            cells[7].textContent.trim(), // Status
+            cells[8].querySelector('div:first-child').textContent.replace('Requested: ', '').trim(),
+            cells[8].querySelector('div:last-child').textContent.replace('Response: ', '').trim()
         ];
     });
     
@@ -366,6 +363,7 @@ function exportToCSV() {
         'Name',
         'Purpose',
         'Room',
+        'Computer',
         'Requested Date',
         'Requested Time',
         'Status',
@@ -380,11 +378,12 @@ function exportToCSV() {
             cells[1].textContent.trim(), // Name
             cells[2].textContent.trim(), // Purpose
             cells[3].textContent.trim(), // Room
-            cells[4].textContent.trim(), // Requested Date
-            cells[5].textContent.trim(), // Requested Time
-            cells[6].textContent.trim(), // Status
-            cells[7].querySelector('div:first-child').textContent.replace('Requested: ', '').trim(),
-            cells[7].querySelector('div:last-child').textContent.replace('Response: ', '').trim()
+            cells[4].textContent.trim(), // Computer
+            cells[5].textContent.trim(), // Requested Date
+            cells[6].textContent.trim(), // Requested Time
+            cells[7].textContent.trim(), // Status
+            cells[8].querySelector('div:first-child').textContent.replace('Requested: ', '').trim(),
+            cells[8].querySelector('div:last-child').textContent.replace('Response: ', '').trim()
         ];
         return values.map(value => value.includes(',') ? `"${value}"` : value).join(',');
     });
@@ -398,65 +397,6 @@ function exportToCSV() {
     a.click();
     window.URL.revokeObjectURL(url);
 }
-
-// Add event listener for computer selection form
-document.getElementById('computerSelectionForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const reservationId = document.getElementById('selectedReservationId').value;
-    const computerNumber = document.getElementById('computerNumber').value;
-    
-    // Create the request body
-    const formData = new FormData();
-    formData.append('student_id', document.getElementById('selectedStudentId').value);
-    formData.append('purpose', document.getElementById('selectedPurpose').value);
-    formData.append('roomNumber', document.getElementById('selectedRoom').value);
-    formData.append('computer_number', computerNumber);
-    
-    fetch('/admin/activate_sitin', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            // Close the modal
-            bootstrap.Modal.getInstance(document.getElementById('computerSelectionModal')).hide();
-            
-            // Update the row to show active status
-            const row = document.querySelector(`tr[data-reservation-id="${reservationId}"]`);
-            const statusCell = row.querySelector('td:nth-child(7)');
-            const actionCell = row.querySelector('td:nth-child(8)');
-            
-            statusCell.innerHTML = '<span class="badge bg-primary">Active</span>';
-            actionCell.innerHTML = ''; // Remove the activate button
-            
-            // Mark the reservation as active
-            return fetch(`/admin/handle_reservation/${reservationId}/activate`, {
-                method: 'POST'
-            });
-        } else {
-            throw new Error(data.error || 'Unknown error occurred');
-        }
-    })
-    .then(response => response.json())
-    .then(() => {
-        alert('Session activated successfully!');
-        // Reset the form
-        document.getElementById('computerSelectionForm').reset();
-        // Reload the reservations to show updated status
-        loadReservations();
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error: ' + error.message);
-    });
-});
 
 // Load reservations when page loads and set up auto-refresh
 document.addEventListener('DOMContentLoaded', function() {

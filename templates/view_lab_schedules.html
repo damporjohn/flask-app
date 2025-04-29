@@ -100,43 +100,81 @@
         margin-left: 260px;
     }
 
-    .table {
+    .filter-card {
         background: var(--gunmetal-3);
-        color: var(--text-light);
         border-radius: 8px;
         box-shadow: var(--box-shadow);
-        width: 100%;
-        margin-top: 20px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-control, .form-select {
+        background: var(--gunmetal-4);
+        border: 1px solid var(--border-color);
+        color: var(--text-light);
+        border-radius: 6px;
+    }
+
+    .form-control:focus, .form-select:focus {
+        background: var(--gunmetal-4);
+        border-color: var(--accent);
+        color: var(--text-light);
+        box-shadow: 0 0 0 0.2rem rgba(77, 182, 172, 0.25);
+    }
+
+    .schedule-card {
+        background: var(--gunmetal-3);
+        border-radius: 8px;
+        box-shadow: var(--box-shadow);
+        margin-bottom: 1.5rem;
+    }
+
+    .schedule-card .card-header {
+        background: var(--gunmetal-2);
+        color: var(--accent);
+        padding: 1rem 1.5rem;
+        border-radius: 8px 8px 0 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .table {
+        color: var(--text-light);
+        margin-bottom: 0;
     }
 
     .table th {
         background: var(--gunmetal-2);
         color: var(--accent);
         font-weight: 600;
-        padding: 12px;
-        text-align: left;
+        border-bottom: 1px solid var(--border-color);
     }
 
     .table td {
-        padding: 12px;
-        border-bottom: 1px solid var(--border-color);
+        border-color: var(--border-color);
     }
 
-    .table tr:hover {
-        background: var(--gunmetal-1);
+    .table tbody tr:hover {
+        background: var(--gunmetal-2);
     }
 
-    .card-header {
+    .badge {
+        background: var(--gunmetal-4);
+        color: var(--accent);
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+    }
+
+    .btn-reset {
+        background: var(--gunmetal-4);
+        color: var(--text-light);
+        border: 1px solid var(--border-color);
+        transition: all 0.2s ease;
+    }
+
+    .btn-reset:hover {
         background: var(--gunmetal-2);
         color: var(--accent);
-        padding: 15px;
-        border-bottom: 1px solid var(--border-color);
-    }
-
-    .card-title {
-        margin: 0;
-        font-size: 1.25rem;
-        font-weight: 600;
     }
 </style>
 
@@ -175,16 +213,78 @@
 
 <!-- Container -->
 <div class="container" id="content" style="margin-top: 100px;">
-    <div class="card">
+    <!-- Filter Section -->
+    <div class="filter-card">
+        <div class="row align-items-end">
+            <div class="col-md-3">
+                <label class="form-label text-light">Filter by Room</label>
+                <select class="form-select" id="roomFilter">
+                    <option value="all">All Rooms</option>
+                    {% if schedules %}
+                        {% set rooms = [] %}
+                        {% for schedule in schedules %}
+                            {% if schedule.roomNumber not in rooms %}
+                                {% set _ = rooms.append(schedule.roomNumber) %}
+                            {% endif %}
+                        {% endfor %}
+                        {% for room in rooms|sort %}
+                            <option value="{{ room }}">Lab Room {{ room }}</option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label text-light">Filter by Day</label>
+                <select class="form-select" id="dayFilter">
+                    <option value="all">All Days</option>
+                    <option value="M">Monday</option>
+                    <option value="T">Tuesday</option>
+                    <option value="W">Wednesday</option>
+                    <option value="TH">Thursday</option>
+                    <option value="F">Friday</option>
+                    <option value="S">Saturday</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label text-light">Search</label>
+                <input type="text" class="form-control" id="scheduleSearch" placeholder="Search by course or instructor...">
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-reset w-100" onclick="resetFilters()">
+                    <i class="fas fa-sync-alt"></i> Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Cards -->
+    <div id="scheduleCards">
+        {% if schedules %}
+            {% set rooms = {} %}
+            {% for schedule in schedules %}
+                {% if schedule.roomNumber not in rooms %}
+                    {% set _ = rooms.update({schedule.roomNumber: []}) %}
+                {% endif %}
+                {% set _ = rooms[schedule.roomNumber].append(schedule) %}
+            {% endfor %}
+
+            {% for room_number, room_schedules in rooms|dictsort %}
+            <div class="schedule-card" data-room="{{ room_number }}">
         <div class="card-header">
-            <h5 class="card-title">Laboratory Schedules</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-door-open"></i> Laboratory Room {{ room_number }}
+                        </h5>
+                        <span class="badge">
+                            {{ room_schedules|length }} Schedule(s)
+                        </span>
+                    </div>
         </div>
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Lab Room</th>
                             <th>Days</th>
                             <th>Start Time</th>
                             <th>End Time</th>
@@ -193,10 +293,11 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% if schedules %}
-                            {% for schedule in schedules %}
-                            <tr>
-                                <td>{{ schedule.roomNumber }}</td>
+                                {% for schedule in room_schedules %}
+                                <tr class="schedule-row" 
+                                    data-days="{{ schedule.days }}"
+                                    data-course="{{ schedule.course }}"
+                                    data-instructor="{{ schedule.instructor }}">
                                 <td>{{ schedule.days }}</td>
                                 <td>{{ schedule.start_time }}</td>
                                 <td>{{ schedule.end_time }}</td>
@@ -204,15 +305,17 @@
                                 <td>{{ schedule.instructor }}</td>
                             </tr>
                             {% endfor %}
-                        {% else %}
-                            <tr>
-                                <td colspan="6" class="text-center">No schedules found</td>
-                            </tr>
-                        {% endif %}
                     </tbody>
                 </table>
             </div>
         </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">
+                No schedules found at this time.
+            </div>
+        {% endif %}
     </div>
 </div>
 
@@ -230,15 +333,63 @@ function toggleSidebar() {
     }
 }
 
-// If page is loaded directly, open sidebar by default for smaller screens
+function filterSchedules() {
+    const roomFilter = document.getElementById('roomFilter').value;
+    const dayFilter = document.getElementById('dayFilter').value;
+    const searchText = document.getElementById('scheduleSearch').value.toLowerCase();
+
+    document.querySelectorAll('.schedule-card').forEach(card => {
+        const roomNumber = card.dataset.room;
+        const shouldShowRoom = roomFilter === 'all' || roomFilter === roomNumber;
+        
+        const rows = card.querySelectorAll('.schedule-row');
+        let visibleRows = 0;
+
+        rows.forEach(row => {
+            const days = row.dataset.days;
+            const course = row.dataset.course.toLowerCase();
+            const instructor = row.dataset.instructor.toLowerCase();
+            
+            const matchesDay = dayFilter === 'all' || days.includes(dayFilter);
+            const matchesSearch = searchText === '' || 
+                                course.includes(searchText) || 
+                                instructor.includes(searchText);
+
+            if (matchesDay && matchesSearch) {
+                row.style.display = '';
+                visibleRows++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        card.style.display = (shouldShowRoom && visibleRows > 0) ? '' : 'none';
+        
+        const badge = card.querySelector('.badge');
+        if (badge) {
+            badge.textContent = `${visibleRows} Schedule(s)`;
+        }
+    });
+}
+
+function resetFilters() {
+    document.getElementById('roomFilter').value = 'all';
+    document.getElementById('dayFilter').value = 'all';
+    document.getElementById('scheduleSearch').value = '';
+    filterSchedules();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    const sidebar = document.getElementById('sidebar');
-    const content = document.getElementById('content');
-    
     if (window.innerWidth <= 768) {
+        const sidebar = document.getElementById('sidebar');
+        const content = document.getElementById('content');
         sidebar.classList.add('active');
         content.style.marginLeft = '260px';
     }
+
+    document.getElementById('roomFilter').addEventListener('change', filterSchedules);
+    document.getElementById('dayFilter').addEventListener('change', filterSchedules);
+    document.getElementById('scheduleSearch').addEventListener('input', filterSchedules);
 });
 </script>
 {% endblock %} 

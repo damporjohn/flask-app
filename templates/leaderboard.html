@@ -78,6 +78,7 @@
         overflow: hidden;
         box-shadow: var(--box-shadow);
         border: 1px solid var(--border-color);
+        margin-bottom: 30px;
     }
     
     .card-header {
@@ -153,7 +154,7 @@
         color: #fff;
     }
     
-    .attendance-count {
+    .attendance-count, .points-count {
         font-weight: 600;
         color: var(--accent);
     }
@@ -228,9 +229,10 @@
         <span class="badge badge-primary">Top 5 Students</span>
     </div>
     
+    <!-- Sit-in Leaderboard -->
     <div class="card">
         <div class="card-header">
-            <h2>Attendance Leaders</h2>
+            <h2><i class="fas fa-user-clock"></i> Most Active Students</h2>
         </div>
         <div class="card-body">
             <table class="leaderboard-table">
@@ -241,14 +243,15 @@
                         <th>Name</th>
                         <th>Course</th>
                         <th>Year Level</th>
-                        <th>Attendance Count</th>
+                        <th>Total Sit-ins</th>
+                        <th>Total Points</th>
                     </tr>
                 </thead>
-                <tbody id="leaderboardBody">
+                <tbody id="sitInLeaderboardBody">
                     <tr>
-                        <td colspan="6" class="loading">
+                        <td colspan="7" class="loading">
                             <i class="fas fa-spinner"></i>
-                            <p>Loading leaderboard data...</p>
+                            <p>Loading data...</p>
                         </td>
                     </tr>
                 </tbody>
@@ -265,54 +268,63 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Fetch leaderboard data
         fetch('/leaderboard_data')
             .then(response => response.json())
             .then(data => {
-                const leaderboardBody = document.getElementById('leaderboardBody');
-                
-                if (data.length === 0) {
-                    leaderboardBody.innerHTML = `
-                        <tr>
-                            <td colspan="6" class="text-center">
-                                <p>No data available</p>
-                            </td>
-                        </tr>
-                    `;
-                    return;
-                }
-                
-                let html = '';
-                
-                data.forEach((student, index) => {
-                    const rank = index + 1;
-                    const rankClass = rank <= 3 ? `rank-${rank}` : '';
-                    
-                    html += `
-                        <tr>
-                            <td>
-                                <div class="rank ${rankClass}">${rank}</div>
-                            </td>
-                            <td>${student.id}</td>
-                            <td>${student.firstname} ${student.lastname}</td>
-                            <td>${student.course}</td>
-                            <td>${student.yearlevel}</td>
-                            <td><span class="attendance-count">${student.attendance_count}</span></td>
-                        </tr>
-                    `;
-                });
-                
-                leaderboardBody.innerHTML = html;
+                updateLeaderboard('sitInLeaderboardBody', data);
             })
             .catch(error => {
                 console.error('Error fetching leaderboard data:', error);
-                document.getElementById('leaderboardBody').innerHTML = `
-                    <tr>
-                        <td colspan="6" class="text-center">
-                            <p>Error loading leaderboard data. Please try again later.</p>
-                        </td>
-                    </tr>
-                `;
+                showError('sitInLeaderboardBody');
             });
     });
+
+    function updateLeaderboard(tableId, data) {
+        const tbody = document.getElementById(tableId);
+        
+        if (!data || data.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center">
+                        <p>No data available</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        let html = '';
+        data.forEach((student, index) => {
+            const rank = index + 1;
+            const rankClass = rank <= 3 ? `rank-${rank}` : '';
+            
+            html += `
+                <tr>
+                    <td>
+                        <div class="rank ${rankClass}">${rank}</div>
+                    </td>
+                    <td>${student.id}</td>
+                    <td>${student.firstname} ${student.lastname}</td>
+                    <td>${student.course}</td>
+                    <td>${student.yearlevel}</td>
+                    <td><span class="attendance-count">${student.attendance_count}</span></td>
+                    <td><span class="points-count">${student.total_points}</span></td>
+                </tr>
+            `;
+        });
+        
+        tbody.innerHTML = html;
+    }
+
+    function showError(tableId) {
+        document.getElementById(tableId).innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center">
+                    <p>Error loading data. Please try again later.</p>
+                </td>
+            </tr>
+        `;
+    }
 </script>
 {% endblock %} 

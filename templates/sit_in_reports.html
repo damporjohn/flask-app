@@ -103,6 +103,7 @@
                             <th>Course</th>
                             <th>Purpose</th>
                             <th>Room</th>
+                            <th>PC Number</th>
                             <th>Login Time</th>
                             <th>Logout Time</th>
                             <th>Duration</th>
@@ -117,6 +118,7 @@
                             <td>{{ record.course }}</td>
                             <td>{{ record.purpose }}</td>
                             <td>{{ record.room_number }}</td>
+                            <td>PC {{ record.computer_number }}</td>
                             <td>{{ record.login_time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
                             <td>{{ record.logout_time.strftime('%Y-%m-%d %H:%M:%S') if record.logout_time else 'Active' }}</td>
                             <td>{{ record.duration }}</td>
@@ -189,7 +191,7 @@ $(document).ready(function() {
         function(settings, data, dataIndex) {
             let min = minDate.val();
             let max = maxDate.val();
-            let date = moment(data[6]).format('YYYY-MM-DD');
+            let date = moment(data[7]).format('YYYY-MM-DD');
             
             if (
                 (min === null && max === null) ||
@@ -206,7 +208,7 @@ $(document).ready(function() {
     // Initialize DataTable
     let table = $('#sitInTable').DataTable({
         dom: 'lfrtip',
-        order: [[6, 'desc']],
+        order: [[0, 'desc']],
         pageLength: 25,
         lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]]
     });
@@ -218,7 +220,7 @@ $(document).ready(function() {
         
         $.fn.dataTable.ext.search.push(
             function(settings, data, dataIndex) {
-                let date = new Date(data[6]).toISOString().split('T')[0];
+                let date = new Date(data[7]).toISOString().split('T')[0];
                 
                 if (
                     (min === '' && max === '') ||
