@@ -4,7 +4,7 @@
 <style>
     .dashboard-container {
         margin-top: 100px;
-        max-width: 100%;
+        max-width: fit-content;
     }
 
     .students-header {
@@ -460,9 +460,6 @@
                     <td>
                         <div class="points-section">
                             <span class="points-badge" id="points-{{ student.id }}">0 pts</span>
-                            <button class="action-btn reward-button" onclick="openRewardModal('{{ student.id }}', '{{ student.firstname }}', '{{ student.lastname }}')">
-                                <i class="fas fa-gift reward-icon"></i> Reward
-                            </button>
                             <div style="margin: 10px 0;"></div>
                             <span class="sessions-badge" id="sessions-{{ student.id }}">0 sessions</span>
                             <button class="action-btn reset-button" onclick="resetStudentSessions('{{ student.id }}', '{{ student.firstname }}', '{{ student.lastname }}')">
@@ -637,7 +634,7 @@ function loadStudentPoints() {
                     // Update the UI
                     const pointsBadge = document.getElementById(`points-${student.student_id}`);
                     if (pointsBadge) {
-                        pointsBadge.textContent = student.total_points + ' pts';
+                        pointsBadge.textContent = student.total_points + ' Reward Points';
                     }
                 });
             }

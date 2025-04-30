@@ -176,6 +176,70 @@
         background: var(--gunmetal-2);
         color: var(--accent);
     }
+    
+    /* Timetable styles */
+    .timetable th {
+        text-align: center;
+        background: var(--gunmetal-2);
+        color: var(--accent);
+        font-weight: 600;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .timetable td {
+        height: 80px;
+        vertical-align: top;
+        padding: 5px;
+        border-color: var(--border-color);
+    }
+    
+    .timetable td:first-child {
+        font-weight: bold;
+        background: var(--gunmetal-2);
+        color: var(--accent);
+        text-align: center;
+        vertical-align: middle;
+    }
+    
+    .schedule-item {
+        background: var(--gunmetal-4);
+        border-left: 4px solid var(--accent);
+        border-radius: 4px;
+        padding: 8px;
+        margin-bottom: 5px;
+        font-size: 0.9rem;
+    }
+    
+    .schedule-item strong {
+        color: var(--text-light);
+    }
+    
+    .schedule-item small {
+        color: var(--text-muted);
+    }
+    
+    .vacant-slot {
+        color: var(--text-muted);
+        font-style: italic;
+        text-align: center;
+        padding: 10px;
+        background: rgba(15, 19, 20, 0.5);
+        border: 1px dashed var(--border-color);
+        border-radius: 4px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.7;
+        font-size: 0.85rem;
+        transition: all 0.2s ease;
+    }
+    
+    .vacant-slot:hover {
+        opacity: 0.9;
+        background: rgba(15, 19, 20, 0.7);
+        color: var(--accent);
+    }
 </style>
 
 <!-- Toggle Sidebar Button -->
@@ -270,7 +334,7 @@
 
             {% for room_number, room_schedules in rooms|dictsort %}
             <div class="schedule-card" data-room="{{ room_number }}">
-        <div class="card-header">
+                <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0">
                             <i class="fas fa-door-open"></i> Laboratory Room {{ room_number }}
@@ -279,36 +343,64 @@
                             {{ room_schedules|length }} Schedule(s)
                         </span>
                     </div>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Days</th>
-                            <th>Start Time</th>
-                            <th>End Time</th>
-                            <th>Course</th>
-                            <th>Instructor</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table timetable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 10%">Time</th>
+                                    <th style="width: 15%">Monday</th>
+                                    <th style="width: 15%">Tuesday</th>
+                                    <th style="width: 15%">Wednesday</th>
+                                    <th style="width: 15%">Thursday</th>
+                                    <th style="width: 15%">Friday</th>
+                                    <th style="width: 15%">Saturday</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set time_slots = [] %}
                                 {% for schedule in room_schedules %}
-                                <tr class="schedule-row" 
-                                    data-days="{{ schedule.days }}"
-                                    data-course="{{ schedule.course }}"
-                                    data-instructor="{{ schedule.instructor }}">
-                                <td>{{ schedule.days }}</td>
-                                <td>{{ schedule.start_time }}</td>
-                                <td>{{ schedule.end_time }}</td>
-                                <td>{{ schedule.course }}</td>
-                                <td>{{ schedule.instructor }}</td>
-                            </tr>
-                            {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+                                    {% set _ = time_slots.append({'start': schedule.start_time, 'end': schedule.end_time}) %}
+                                {% endfor %}
+                                
+                                {% set sorted_time_slots = time_slots|sort(attribute='start') %}
+                                {% set unique_time_slots = [] %}
+                                
+                                {% for slot in sorted_time_slots %}
+                                    {% if slot not in unique_time_slots %}
+                                        {% set _ = unique_time_slots.append(slot) %}
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% for slot in unique_time_slots %}
+                                    <tr>
+                                        <td>{{ slot.start }} - {{ slot.end }}</td>
+                                        
+                                        {% for day_code, day_name in [('M', 'Monday'), ('T', 'Tuesday'), ('W', 'Wednesday'), ('TH', 'Thursday'), ('F', 'Friday'), ('S', 'Saturday')] %}
+                                            <td>
+                                                {% set has_schedule = false %}
+                                                {% for schedule in room_schedules %}
+                                                    {% if schedule.start_time == slot.start and schedule.end_time == slot.end and day_code in schedule.days %}
+                                                        {% set has_schedule = true %}
+                                                        <div class="schedule-item" data-days="{{ schedule.days }}" data-course="{{ schedule.course }}" data-instructor="{{ schedule.instructor }}">
+                                                            <strong>{{ schedule.course }}</strong><br>
+                                                            <small>{{ schedule.instructor }}</small>
+                                                        </div>
+                                                    {% endif %}
+                                                {% endfor %}
+                                                
+                                                {% if not has_schedule %}
+                                                    <div class="vacant-slot">Vacant</div>
+                                                {% endif %}
+                                            </td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
             {% endfor %}
         {% else %}
@@ -342,34 +434,104 @@ function filterSchedules() {
         const roomNumber = card.dataset.room;
         const shouldShowRoom = roomFilter === 'all' || roomFilter === roomNumber;
         
-        const rows = card.querySelectorAll('.schedule-row');
-        let visibleRows = 0;
-
-        rows.forEach(row => {
-            const days = row.dataset.days;
-            const course = row.dataset.course.toLowerCase();
-            const instructor = row.dataset.instructor.toLowerCase();
+        // Count visible schedule items
+        let visibleItems = 0;
+        
+        // Filter schedule items within the timetable
+        card.querySelectorAll('.schedule-item').forEach(item => {
+            const days = item.dataset.days;
+            const course = item.dataset.course.toLowerCase();
+            const instructor = item.dataset.instructor.toLowerCase();
             
             const matchesDay = dayFilter === 'all' || days.includes(dayFilter);
             const matchesSearch = searchText === '' || 
-                                course.includes(searchText) || 
-                                instructor.includes(searchText);
+                               course.includes(searchText) || 
+                               instructor.includes(searchText);
 
             if (matchesDay && matchesSearch) {
-                row.style.display = '';
-                visibleRows++;
+                item.style.display = '';
+                visibleItems++;
+                
+                // Hide vacant slot in the same cell when a schedule is visible
+                const parentCell = item.closest('td');
+                const vacantSlot = parentCell.querySelector('.vacant-slot');
+                if (vacantSlot) {
+                    vacantSlot.style.display = 'none';
+                }
             } else {
-                row.style.display = 'none';
+                item.style.display = 'none';
             }
         });
 
-        card.style.display = (shouldShowRoom && visibleRows > 0) ? '' : 'none';
+        // Show/hide the entire card based on filters
+        card.style.display = (shouldShowRoom && (visibleItems > 0 || dayFilter !== 'all' || searchText === '')) ? '' : 'none';
         
+        // Update the schedule count badge
         const badge = card.querySelector('.badge');
         if (badge) {
-            badge.textContent = `${visibleRows} Schedule(s)`;
+            badge.textContent = `${visibleItems} Schedule(s)`;
+        }
+        
+        // Handle empty cells when filtering
+        if (dayFilter !== 'all') {
+            const dayIndex = getDayColumnIndex(dayFilter);
+            card.querySelectorAll('td').forEach((td, index) => {
+                // Skip the time column
+                if (index % 7 === 0) return;
+                
+                // Only show the column that matches the day filter
+                const columnDay = index % 7;
+                if (columnDay !== dayIndex) {
+                    td.style.display = 'none';
+                } else {
+                    td.style.display = '';
+                    
+                    // Check if we need to display the vacant slot
+                    const scheduleItems = td.querySelectorAll('.schedule-item');
+                    const vacantSlot = td.querySelector('.vacant-slot');
+                    
+                    if (vacantSlot) {
+                        // Show vacant slot only if there are no visible schedule items
+                        let hasVisibleSchedule = false;
+                        scheduleItems.forEach(item => {
+                            if (item.style.display !== 'none') {
+                                hasVisibleSchedule = true;
+                            }
+                        });
+                        
+                        vacantSlot.style.display = hasVisibleSchedule ? 'none' : 'flex';
+                    }
+                }
+            });
+        } else {
+            // Show all columns when not filtering by day
+            card.querySelectorAll('td').forEach(td => {
+                td.style.display = '';
+                
+                // Check if we need to display the vacant slot
+                const scheduleItems = td.querySelectorAll('.schedule-item');
+                const vacantSlot = td.querySelector('.vacant-slot');
+                
+                if (vacantSlot) {
+                    // Show vacant slot only if there are no visible schedule items
+                    let hasVisibleSchedule = false;
+                    scheduleItems.forEach(item => {
+                        if (item.style.display !== 'none') {
+                            hasVisibleSchedule = true;
+                        }
+                    });
+                    
+                    vacantSlot.style.display = hasVisibleSchedule ? 'none' : 'flex';
+                }
+            });
         }
     });
+}
+
+// Helper function to get column index from day code
+function getDayColumnIndex(dayCode) {
+    const dayCodes = ['M', 'T', 'W', 'TH', 'F', 'S'];
+    return dayCodes.indexOf(dayCode) + 1; // +1 because column 0 is the time column
 }
 
 function resetFilters() {
@@ -380,6 +542,7 @@ function resetFilters() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize sidebar state based on screen size
     if (window.innerWidth <= 768) {
         const sidebar = document.getElementById('sidebar');
         const content = document.getElementById('content');
@@ -387,9 +550,19 @@ document.addEventListener('DOMContentLoaded', function() {
         content.style.marginLeft = '260px';
     }
 
+    // Set up event listeners for filters
     document.getElementById('roomFilter').addEventListener('change', filterSchedules);
     document.getElementById('dayFilter').addEventListener('change', filterSchedules);
     document.getElementById('scheduleSearch').addEventListener('input', filterSchedules);
+    
+    // Initial setup to ensure vacant slots are properly displayed
+    document.querySelectorAll('.schedule-item').forEach(item => {
+        const parentCell = item.closest('td');
+        const vacantSlot = parentCell.querySelector('.vacant-slot');
+        if (vacantSlot) {
+            vacantSlot.style.display = 'none';
+        }
+    });
 });
 </script>
 {% endblock %} 

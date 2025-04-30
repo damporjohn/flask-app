@@ -121,10 +121,10 @@
     }
 
     .resources-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 1.5rem;
-    }
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+}
 
     .resource-card {
         background: white;
@@ -137,6 +137,29 @@
     .resource-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    .resource-media {
+        margin-bottom: 1rem;
+        border-radius: 8px;
+        overflow: hidden;
+        max-height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--gunmetal-3);
+    }
+
+    .resource-media img {
+        max-width: 100%;
+        max-height: 200px;
+        object-fit: contain;
+    }
+
+    .resource-media video {
+        max-width: 100%;
+        max-height: 200px;
+        object-fit: contain;
     }
 
     .resource-content {
@@ -157,7 +180,7 @@
         margin-bottom: 1rem;
     }
 
-    .resource-link {
+    .resource-view-btn {
         display: inline-block;
         background: var(--primary-color);
         color: white;
@@ -168,7 +191,7 @@
         transition: all 0.2s ease;
     }
 
-    .resource-link:hover {
+    .resource-view-btn:hover {
         background: var(--accent-color);
         color: white;
     }
@@ -267,17 +290,36 @@ function loadResources() {
             const activeResources = data.resources.filter(resource => resource.status === 'active');
             
             if (activeResources.length > 0) {
-                resourcesGrid.innerHTML = activeResources.map(resource => `
-                    <div class="resource-card">
-                        <div class="resource-content">
-                            <h3 class="resource-title">${resource.title}</h3>
-                            <p class="resource-description">${resource.description}</p>
-                            <a href="${resource.link}" class="resource-link" target="_blank">
-                                Access Resource
-                            </a>
+                resourcesGrid.innerHTML = activeResources.map(resource => {
+                    const resourcePath = resource.resource;
+                    const isImage = resourcePath.match(/\.(jpeg|jpg|gif|png)$/i);
+                    const isVideo = resourcePath.match(/\.(mp4|webm|ogg|mov)$/i);
+                    
+                    let resourcePreview = '';
+                    let viewButton = '';
+                    
+                    if (isImage) {
+                        resourcePreview = `<div class="resource-media"><img src="${resourcePath}" alt="${resource.title}"></div>`;
+                        viewButton = `<a href="${resourcePath}" class="resource-view-btn" target="_blank">View Full Image</a>`;
+                    } else if (isVideo) {
+                        resourcePreview = `<div class="resource-media"><video controls><source src="${resourcePath}" type="video/${resourcePath.split('.').pop()}"></video></div>`;
+                        viewButton = `<a href="${resourcePath}" class="resource-view-btn" target="_blank">Download Video</a>`;
+                    } else {
+                        resourcePreview = `<div class="resource-media"><i class="fas fa-file fa-3x" style="color: var(--accent);"></i></div>`;
+                        viewButton = `<a href="${resourcePath}" class="resource-view-btn" target="_blank">Download Resource</a>`;
+                    }
+                    
+                    return `
+                        <div class="resource-card">
+                            ${resourcePreview}
+                            <div class="resource-content">
+                                <h3 class="resource-title">${resource.title}</h3>
+                                <p class="resource-description">${resource.description}</p>
+                                ${viewButton}
+                            </div>
                         </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             } else {
                 resourcesGrid.innerHTML = `
                     <div class="no-resources">

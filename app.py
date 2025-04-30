@@ -31,14 +31,18 @@ DB_CONFIG = {
 
 # Configure upload folder
 UPLOAD_FOLDER = os.path.join('static', 'uploads', 'profile_photos')
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+LAB_RESOURCES_FOLDER = os.path.join('static', 'uploads', 'lab_resources')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['LAB_RESOURCES_FOLDER'] = LAB_RESOURCES_FOLDER
 
-# Create upload directory if it doesn't exist
+# Create upload directories if they don't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(LAB_RESOURCES_FOLDER, exist_ok=True)
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+def allowed_file(filename, allowed_extensions=None):
+    if allowed_extensions is None:
+        allowed_extensions = ['png', 'jpg', 'jpeg']
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
 def login_required(f):
     @wraps(f)
@@ -2415,25 +2419,43 @@ def add_lab_resource():
     if session.get('role') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
     
-    data = request.get_json()
-    title = data.get('title')
-    link = data.get('link')
-    description = data.get('description')
+    if 'resource_file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
     
-    if not all([title, link, description]):
+    file = request.files['resource_file']
+    title = request.form.get('title')
+    description = request.form.get('description')
+    
+    if not file or file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    if not all([title, description]):
         return jsonify({'error': 'Missing required fields'}), 400
     
+    if not allowed_file(file.filename, ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'webm', 'ogg', 'mov']):
+        return jsonify({'error': 'File type not allowed'}), 400
+    
     try:
+        # Save the file
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        unique_filename = f"{timestamp}_{filename}"
+        file_path = os.path.join(app.config['LAB_RESOURCES_FOLDER'], unique_filename)
+        file.save(file_path)
+        
+        resource_url = f"/static/uploads/lab_resources/{unique_filename}"
+        
+        # Save to database
         conn = mysql.connector.connect(**DB_CONFIG)
         cursor = conn.cursor()
         
         cursor.execute("""
-            INSERT INTO lab_resources (title, link, description, status)
+            INSERT INTO lab_resources (title, resource, description, status)
             VALUES (%s, %s, %s, 'active')
-        """, (title, link, description))
+        """, (title, resource_url, description))
         
         conn.commit()
-        return jsonify({'message': 'Resource added successfully'})
+        return jsonify({'success': True, 'message': 'Resource added successfully'})
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -2451,7 +2473,7 @@ def get_lab_resources():
         cursor = conn.cursor(dictionary=True)
         
         cursor.execute("""
-            SELECT id, title, link, description, status
+            SELECT id, title, resource, description, status
             FROM lab_resources
             ORDER BY created_at DESC
         """)
@@ -2517,12 +2539,29 @@ def delete_resource():
     
     try:
         conn = mysql.connector.connect(**DB_CONFIG)
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
         
+        # Get the resource file path before deleting
+        cursor.execute("SELECT resource FROM lab_resources WHERE id = %s", (resource_id,))
+        resource = cursor.fetchone()
+        
+        if resource and resource['resource']:
+            # Extract the filename from the resource URL
+            resource_path = resource['resource']
+            if resource_path.startswith('/'):
+                resource_path = resource_path[1:]  # Remove leading slash
+            
+            full_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), resource_path)
+            
+            # Delete the file if it exists
+            if os.path.exists(full_path):
+                os.remove(full_path)
+        
+        # Delete from database
         cursor.execute("DELETE FROM lab_resources WHERE id = %s", (resource_id,))
         
         conn.commit()
-        return jsonify({'message': 'Resource deleted successfully'})
+        return jsonify({'success': True, 'message': 'Resource deleted successfully'})
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
