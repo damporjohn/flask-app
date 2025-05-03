@@ -2432,7 +2432,7 @@ def add_lab_resource():
     if not all([title, description]):
         return jsonify({'error': 'Missing required fields'}), 400
     
-    if not allowed_file(file.filename, ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'webm', 'ogg', 'mov']):
+    if not allowed_file(file.filename, ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'webm', 'ogg', 'mov', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv']):
         return jsonify({'error': 'File type not allowed'}), 400
     
     try:

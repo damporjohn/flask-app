@@ -162,6 +162,52 @@
         transform: translateX(-5px);
         color: white;
     }
+    
+    /* File preview styling */
+    .file-preview {
+        display: flex;
+        align-items: center;
+        padding: 8px;
+        border-radius: 8px;
+        background: rgba(0,0,0,0.03);
+        width: fit-content;
+    }
+    
+    .file-preview a {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    
+    .file-preview a:hover {
+        text-decoration: underline;
+    }
+    
+    /* File type indicator */
+    .file-type-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        margin-top: 5px;
+    }
+    
+    /* Resource file input styling */
+    #resourceFile {
+        padding: 10px;
+        background: rgba(0,0,0,0.02);
+    }
+    
+    .form-text {
+        display: block;
+        margin-top: 5px;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
 </style>
 
 <div class="resources-container" style="margin-top: 100px;">
@@ -182,8 +228,8 @@
             </div>
             <div class="form-group">
                 <label class="form-label">Resource File</label>
-                <input type="file" class="form-control" id="resourceFile" accept="image/*,video/*" required>
-                <small class="form-text text-muted">Upload images or videos as resources</small>
+                <input type="file" class="form-control" id="resourceFile" accept="image/*,video/*,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" required>
+                <small class="form-text text-muted">Upload images, videos, PDFs, Word documents, Excel files, or CSV files</small>
             </div>
             <div class="form-group">
                 <label class="form-label">Description</label>
@@ -219,15 +265,70 @@ function loadResources() {
                 const resourcePath = resource.resource;
                 const isImage = resourcePath.match(/\.(jpeg|jpg|gif|png)$/i);
                 const isVideo = resourcePath.match(/\.(mp4|webm|ogg|mov)$/i);
+                const isPDF = resourcePath.match(/\.(pdf)$/i);
+                const isWord = resourcePath.match(/\.(doc|docx)$/i);
+                const isExcel = resourcePath.match(/\.(xls|xlsx)$/i);
+                const isCSV = resourcePath.match(/\.(csv)$/i);
                 
                 let resourcePreview = '';
                 
                 if (isImage) {
-                    resourcePreview = `<img src="${resourcePath}" alt="${resource.title}" style="max-width: 100px; max-height: 60px;">`;
+                    resourcePreview = `
+                        <img src="${resourcePath}" alt="${resource.title}" style="max-width: 100px; max-height: 60px;">
+                        <div class="file-type-indicator" style="background: rgba(76, 175, 80, 0.1); color: #4caf50;">
+                            <i class="fas fa-image"></i> Image
+                        </div>`;
                 } else if (isVideo) {
-                    resourcePreview = `<video width="100" height="60" controls><source src="${resourcePath}" type="video/${resourcePath.split('.').pop()}"></video>`;
+                    resourcePreview = `
+                        <video width="100" height="60" controls><source src="${resourcePath}" type="video/${resourcePath.split('.').pop()}"></video>
+                        <div class="file-type-indicator" style="background: rgba(156, 39, 176, 0.1); color: #9c27b0;">
+                            <i class="fas fa-video"></i> Video
+                        </div>`;
+                } else if (isPDF) {
+                    resourcePreview = `
+                        <div class="file-preview">
+                            <i class="fas fa-file-pdf" style="font-size: 2rem; color: #f44336;"></i>
+                            <a href="${resourcePath}" target="_blank" class="ms-2">View PDF</a>
+                        </div>
+                        <div class="file-type-indicator" style="background: rgba(244, 67, 54, 0.1); color: #f44336;">
+                            <i class="fas fa-file-pdf"></i> PDF
+                        </div>`;
+                } else if (isWord) {
+                    resourcePreview = `
+                        <div class="file-preview">
+                            <i class="fas fa-file-word" style="font-size: 2rem; color: #2b579a;"></i>
+                            <a href="${resourcePath}" target="_blank" class="ms-2">Download Word Document</a>
+                        </div>
+                        <div class="file-type-indicator" style="background: rgba(43, 87, 154, 0.1); color: #2b579a;">
+                            <i class="fas fa-file-word"></i> Word
+                        </div>`;
+                } else if (isExcel) {
+                    resourcePreview = `
+                        <div class="file-preview">
+                            <i class="fas fa-file-excel" style="font-size: 2rem; color: #217346;"></i>
+                            <a href="${resourcePath}" target="_blank" class="ms-2">Download Excel File</a>
+                        </div>
+                        <div class="file-type-indicator" style="background: rgba(33, 115, 70, 0.1); color: #217346;">
+                            <i class="fas fa-file-excel"></i> Excel
+                        </div>`;
+                } else if (isCSV) {
+                    resourcePreview = `
+                        <div class="file-preview">
+                            <i class="fas fa-file-csv" style="font-size: 2rem; color: #2196f3;"></i>
+                            <a href="${resourcePath}" target="_blank" class="ms-2">Download CSV</a>
+                        </div>
+                        <div class="file-type-indicator" style="background: rgba(33, 150, 243, 0.1); color: #2196f3;">
+                            <i class="fas fa-file-csv"></i> CSV
+                        </div>`;
                 } else {
-                    resourcePreview = `<a href="${resourcePath}" target="_blank">View Resource</a>`;
+                    resourcePreview = `
+                        <div class="file-preview">
+                            <i class="fas fa-file" style="font-size: 2rem; color: #607d8b;"></i>
+                            <a href="${resourcePath}" target="_blank" class="ms-2">Download Resource</a>
+                        </div>
+                        <div class="file-type-indicator" style="background: rgba(96, 125, 139, 0.1); color: #607d8b;">
+                            <i class="fas fa-file"></i> File
+                        </div>`;
                 }
                 
                 return `
@@ -304,6 +405,32 @@ document.getElementById('addResourceForm').addEventListener('submit', function(e
         return;
     }
     
+    // Validate file type
+    const validTypes = [
+        'image/jpeg', 'image/png', 'image/gif', 'image/jpg',
+        'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime',
+        'application/pdf',
+        'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/csv'
+    ];
+    
+    if (!validTypes.includes(resourceFile.type) && 
+        !(resourceFile.name.endsWith('.doc') || 
+          resourceFile.name.endsWith('.docx') || 
+          resourceFile.name.endsWith('.xls') || 
+          resourceFile.name.endsWith('.xlsx') || 
+          resourceFile.name.endsWith('.csv'))) {
+        alert('Invalid file type. Please upload an image, video, PDF, Word document, Excel file, or CSV file.');
+        return;
+    }
+    
+    // Display upload status
+    const submitBtn = document.querySelector('.submit-btn');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Uploading...';
+    submitBtn.disabled = true;
+    
     const formData = new FormData();
     formData.append('title', title);
     formData.append('description', description);
@@ -318,11 +445,21 @@ document.getElementById('addResourceForm').addEventListener('submit', function(e
         if (data.success) {
             document.getElementById('addResourceForm').reset();
             loadResources();
+            // Show success message
+            alert('Resource uploaded successfully!');
         } else {
             alert(data.error || 'Failed to add resource');
         }
     })
-    .catch(error => console.error('Error adding resource:', error));
+    .catch(error => {
+        console.error('Error adding resource:', error);
+        alert('Error uploading resource: ' + error.message);
+    })
+    .finally(() => {
+        // Reset button state
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+    });
 });
 
 // Load resources when page loads

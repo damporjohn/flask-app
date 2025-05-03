@@ -229,6 +229,45 @@
             margin-left: 260px;
         }
     }
+
+    /* File type icons */
+    .file-icon {
+        font-size: 4rem;
+        margin: 20px;
+    }
+    
+    .file-pdf {
+        color: #f44336;
+    }
+    
+    .file-word {
+        color: #2b579a;
+    }
+    
+    .file-excel {
+        color: #217346;
+    }
+    
+    .file-csv {
+        color: #2196f3;
+    }
+    
+    .file-generic {
+        color: #607d8b;
+    }
+    
+    /* File type badge */
+    .file-type-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(4px);
+    }
 </style>
 
 <!-- Hamburger Button -->
@@ -294,23 +333,50 @@ function loadResources() {
                     const resourcePath = resource.resource;
                     const isImage = resourcePath.match(/\.(jpeg|jpg|gif|png)$/i);
                     const isVideo = resourcePath.match(/\.(mp4|webm|ogg|mov)$/i);
+                    const isPDF = resourcePath.match(/\.(pdf)$/i);
+                    const isWord = resourcePath.match(/\.(doc|docx)$/i);
+                    const isExcel = resourcePath.match(/\.(xls|xlsx)$/i);
+                    const isCSV = resourcePath.match(/\.(csv)$/i);
                     
                     let resourcePreview = '';
                     let viewButton = '';
+                    let fileType = '';
                     
                     if (isImage) {
                         resourcePreview = `<div class="resource-media"><img src="${resourcePath}" alt="${resource.title}"></div>`;
                         viewButton = `<a href="${resourcePath}" class="resource-view-btn" target="_blank">View Full Image</a>`;
+                        fileType = 'Image';
                     } else if (isVideo) {
                         resourcePreview = `<div class="resource-media"><video controls><source src="${resourcePath}" type="video/${resourcePath.split('.').pop()}"></video></div>`;
                         viewButton = `<a href="${resourcePath}" class="resource-view-btn" target="_blank">Download Video</a>`;
+                        fileType = 'Video';
+                    } else if (isPDF) {
+                        resourcePreview = `<div class="resource-media"><i class="fas fa-file-pdf file-icon file-pdf"></i></div>`;
+                        viewButton = `<a href="${resourcePath}" class="resource-view-btn" target="_blank">View PDF</a>`;
+                        fileType = 'PDF Document';
+                    } else if (isWord) {
+                        resourcePreview = `<div class="resource-media"><i class="fas fa-file-word file-icon file-word"></i></div>`;
+                        viewButton = `<a href="${resourcePath}" class="resource-view-btn" target="_blank">Download Word Document</a>`;
+                        fileType = 'Word Document';
+                    } else if (isExcel) {
+                        resourcePreview = `<div class="resource-media"><i class="fas fa-file-excel file-icon file-excel"></i></div>`;
+                        viewButton = `<a href="${resourcePath}" class="resource-view-btn" target="_blank">Download Excel File</a>`;
+                        fileType = 'Excel Spreadsheet';
+                    } else if (isCSV) {
+                        resourcePreview = `<div class="resource-media"><i class="fas fa-file-csv file-icon file-csv"></i></div>`;
+                        viewButton = `<a href="${resourcePath}" class="resource-view-btn" target="_blank">Download CSV File</a>`;
+                        fileType = 'CSV File';
                     } else {
-                        resourcePreview = `<div class="resource-media"><i class="fas fa-file fa-3x" style="color: var(--accent);"></i></div>`;
+                        resourcePreview = `<div class="resource-media"><i class="fas fa-file file-icon file-generic"></i></div>`;
                         viewButton = `<a href="${resourcePath}" class="resource-view-btn" target="_blank">Download Resource</a>`;
+                        fileType = 'Document';
                     }
                     
+                    const fileTypeBadge = fileType ? `<span class="file-type-badge">${fileType}</span>` : '';
+                    
                     return `
-                        <div class="resource-card">
+                        <div class="resource-card" style="position: relative;">
+                            ${fileTypeBadge}
                             ${resourcePreview}
                             <div class="resource-content">
                                 <h3 class="resource-title">${resource.title}</h3>

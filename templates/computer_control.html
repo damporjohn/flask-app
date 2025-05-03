@@ -17,6 +17,30 @@
         </div>
     </div>
 
+    <!-- Bulk Actions -->
+    <div class="card custom-card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Lab Control Actions</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-12">
+                    <div class="alert alert-info mb-3">
+                        <i class="fas fa-info-circle me-2"></i> Use these controls to manage the lab status for classes and maintenance.
+                    </div>
+                    <div class="d-flex gap-3">
+                        <button id="markAllOccupiedBtn" class="btn btn-danger" disabled>
+                            <i class="fas fa-user-lock me-2"></i> Mark All as Occupied (Class Mode)
+                        </button>
+                        <button id="markAllVacantBtn" class="btn btn-success" disabled>
+                            <i class="fas fa-door-open me-2"></i> Mark All as Vacant (Free Time)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Computer Grid Container -->
     <div class="card custom-card">
         <div class="card-header">
@@ -232,6 +256,65 @@
     opacity: 1;
     transition: opacity 0.2s ease;
 }
+
+.action-buttons {
+    visibility: hidden;
+    opacity: 0;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 2;
+}
+
+.computer-card:hover .action-buttons {
+    visibility: visible;
+    opacity: 1;
+}
+
+.mark-vacant-btn {
+    background-color: #28a745;
+    border-color: #28a745;
+    color: white;
+    transition: all 0.2s ease;
+}
+
+.mark-vacant-btn:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+    transform: scale(1.05);
+}
+
+/* Bulk action buttons */
+#markAllOccupiedBtn, #markAllVacantBtn {
+    transition: all 0.2s ease;
+    font-weight: 500;
+    padding: 10px 20px;
+}
+
+#markAllOccupiedBtn:hover, #markAllVacantBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+#markAllOccupiedBtn:active, #markAllVacantBtn:active {
+    transform: translateY(0);
+}
+
+/* Custom alert styling */
+.position-fixed {
+    position: fixed;
+}
+
+.top-50 {
+    top: 50% !important;
+}
+
+.start-50 {
+    left: 50% !important;
+}
+
+.translate-middle {
+    transform: translate(-50%, -50%) !important;
+}
 </style>
 
 <script>
@@ -244,6 +327,24 @@ document.addEventListener('DOMContentLoaded', function() {
             loadComputers(selectedLab);
         } else {
             clearGrid();
+            // Disable bulk action buttons if no lab is selected
+            document.getElementById('markAllOccupiedBtn').disabled = true;
+            document.getElementById('markAllVacantBtn').disabled = true;
+        }
+    });
+    
+    // Set up event listeners for bulk action buttons
+    document.getElementById('markAllOccupiedBtn').addEventListener('click', function() {
+        const selectedLab = document.getElementById('labSelect').value;
+        if (selectedLab) {
+            markAllComputers(selectedLab, 'occupied');
+        }
+    });
+    
+    document.getElementById('markAllVacantBtn').addEventListener('click', function() {
+        const selectedLab = document.getElementById('labSelect').value;
+        if (selectedLab) {
+            markAllComputers(selectedLab, 'vacant');
         }
     });
 });
@@ -319,7 +420,7 @@ function loadComputers(labNumber) {
                     `;
                     
                     col.innerHTML = `
-                        <div class="computer-card">
+                        <div class="computer-card" data-number="${computer.number}" data-status="${statusText}">
                             <div class="computer-icon">
                                 <i class="fas fa-desktop"></i>
                             </div>
@@ -328,11 +429,21 @@ function loadComputers(labNumber) {
                                 ${statusText.toUpperCase()}
                             </div>
                             ${tooltipContent}
+                            <div class="action-buttons mt-2">
+                                ${statusText !== 'vacant' ? 
+                                `<button class="btn btn-sm btn-success mark-vacant-btn" onclick="markComputerVacant(event, '${labNumber}', ${computer.number})">
+                                    <i class="fas fa-check-circle"></i> Mark as Vacant
+                                </button>` : ''}
+                            </div>
                         </div>
                     `;
                     
                     grid.appendChild(col);
                 });
+                
+                // Enable bulk action buttons once computers are loaded
+                document.getElementById('markAllOccupiedBtn').disabled = false;
+                document.getElementById('markAllVacantBtn').disabled = false;
             }
         })
         .catch(error => {
@@ -420,5 +531,137 @@ setInterval(function() {
         loadComputers(labSelect.value);
     }
 }, 30000);
+
+// Function to mark a single computer as vacant
+function markComputerVacant(event, roomNumber, computerNumber) {
+    // Stop the event from bubbling up to the computer card
+    event.stopPropagation();
+    
+    if (!confirm(`Are you sure you want to mark PC ${computerNumber} as vacant?`)) {
+        return;
+    }
+    
+    updateComputerStatus(roomNumber, computerNumber, 'vacant')
+        .then(response => {
+            if (response.success) {
+                // Refresh the computer display
+                loadComputers(roomNumber);
+            } else {
+                alert('Error: ' + (response.error || 'Failed to update computer status'));
+            }
+        })
+        .catch(error => {
+            console.error('Error marking computer as vacant:', error);
+            alert('Error marking computer as vacant');
+        });
+}
+
+// Function to mark all computers in a lab with a specific status
+function markAllComputers(roomNumber, status) {
+    const actionName = status === 'occupied' ? 'occupied (class mode)' : 'vacant';
+    
+    if (!confirm(`Are you sure you want to mark ALL computers in Lab ${roomNumber} as ${actionName}?`)) {
+        return;
+    }
+    
+    // Get all computer numbers in the grid
+    const computerCards = document.querySelectorAll('#computerGrid .computer-card');
+    const totalComputers = computerCards.length;
+    let processedComputers = 0;
+    let errorCount = 0;
+    
+    // Show a processing indicator
+    const processingAlert = document.createElement('div');
+    processingAlert.className = 'alert alert-warning position-fixed top-50 start-50 translate-middle';
+    processingAlert.style.zIndex = '9999';
+    processingAlert.style.padding = '20px 40px';
+    processingAlert.innerHTML = `
+        <div class="d-flex align-items-center">
+            <div class="spinner-border text-warning me-3" role="status">
+                <span class="visually-hidden">Processing...</span>
+            </div>
+            <div>
+                Processing computers: <span id="processCount">0</span>/${totalComputers}
+            </div>
+        </div>
+    `;
+    document.body.appendChild(processingAlert);
+    
+    // Process each computer one by one to avoid overwhelming the server
+    const processNextComputer = (index) => {
+        if (index >= computerCards.length) {
+            // All done
+            document.body.removeChild(processingAlert);
+            
+            if (errorCount > 0) {
+                alert(`Operation completed with ${errorCount} errors. Please check and try again for the failed computers.`);
+            } else {
+                alert(`All computers in Lab ${roomNumber} have been marked as ${actionName}!`);
+            }
+            
+            // Refresh the computer display
+            loadComputers(roomNumber);
+            return;
+        }
+        
+        const card = computerCards[index];
+        const computerNumber = card.dataset.number;
+        const currentStatus = card.dataset.status;
+        
+        // Skip computers that already have the target status
+        if (currentStatus === status) {
+            processedComputers++;
+            document.getElementById('processCount').textContent = processedComputers;
+            processNextComputer(index + 1);
+            return;
+        }
+        
+        updateComputerStatus(roomNumber, computerNumber, status)
+            .then(response => {
+                processedComputers++;
+                document.getElementById('processCount').textContent = processedComputers;
+                
+                if (!response.success) {
+                    errorCount++;
+                    console.error(`Error updating PC ${computerNumber}:`, response.error);
+                }
+                
+                // Process the next computer
+                processNextComputer(index + 1);
+            })
+            .catch(error => {
+                processedComputers++;
+                errorCount++;
+                document.getElementById('processCount').textContent = processedComputers;
+                console.error(`Error updating PC ${computerNumber}:`, error);
+                
+                // Continue with the next computer despite the error
+                processNextComputer(index + 1);
+            });
+    };
+    
+    // Start the process
+    processNextComputer(0);
+}
+
+// Helper function to make the actual API call to update computer status
+function updateComputerStatus(roomNumber, computerNumber, status) {
+    return fetch('/toggle_computer_status', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            room_number: roomNumber,
+            computer_number: computerNumber,
+            status: status
+        })
+    })
+    .then(response => response.json())
+    .catch(error => {
+        console.error('Error updating computer status:', error);
+        return { success: false, error: 'Network error' };
+    });
+}
 </script>
 {% endblock %} 
