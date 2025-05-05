@@ -10,10 +10,13 @@
             </a>
         </div>
         <h2>Computer Control</h2>
-        <div>
+        <div class="d-flex align-items-center">
             <select id="labSelect" class="form-select" style="width: 200px;">
                 <option value="">Select Lab</option>
             </select>
+            <button id="refreshBtn" class="btn btn-outline-primary ml-2" onclick="refreshComputers()" style="margin-left: 10px;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
         </div>
     </div>
 
@@ -206,6 +209,12 @@
     border: 1px solid rgba(156, 39, 176, 0.4);
 }
 
+.status-maintenance {
+    background: rgba(117, 117, 117, 0.25);
+    color: #757575;
+    border: 1px solid rgba(117, 117, 117, 0.4);
+}
+
 /* Ensure tooltips don't get cut off */
 .card-body {
     overflow: visible;
@@ -374,12 +383,15 @@ function clearGrid() {
 }
 
 function loadComputers(labNumber) {
+    console.log(`Loading computers for lab ${labNumber}...`);
+    
     fetch(`/get_computers/${labNumber}`)
         .then(response => response.json())
         .then(data => {
             clearGrid();
             
             if (data.computers && Array.isArray(data.computers)) {
+                console.log(`Loaded ${data.computers.length} computers`);
                 const grid = document.getElementById('computerGrid');
                 
                 data.computers.forEach(computer => {
@@ -390,6 +402,8 @@ function loadComputers(labNumber) {
                     let timer = '';
                     let statusText = computer.status;
                     
+                    console.log(`PC ${computer.number} original status: ${statusText}`);
+                    
                     // Update status text based on the actual status
                     if (computer.status === 'approved' && computer.used === 1) {
                         statusText = 'occupied';
@@ -397,7 +411,11 @@ function loadComputers(labNumber) {
                         statusText = 'reserved';
                     } else if (computer.status === 'pending') {
                         statusText = 'pending';
+                    } else if (computer.status === 'maintenance') {
+                        statusText = 'maintenance';
                     }
+                    
+                    console.log(`PC ${computer.number} final status: ${statusText}`);
                     
                     if (computer.student) {
                         studentInfo = `
@@ -413,7 +431,7 @@ function loadComputers(labNumber) {
 
                     let tooltipContent = `
                         <div class="tooltip-content">
-                            <strong>Status:</strong> ${statusText.toUpperCase()}<br>
+                            <strong>Status:</strong> ${statusText === 'maintenance' ? 'ON MAINTENANCE' : statusText.toUpperCase()}<br>
                             ${studentInfo}
                             ${timer}
                         </div>
@@ -426,7 +444,7 @@ function loadComputers(labNumber) {
                             </div>
                             <h5>PC ${computer.number}</h5>
                             <div class="computer-status status-${statusText}">
-                                ${statusText.toUpperCase()}
+                                ${statusText === 'maintenance' ? 'ON MAINTENANCE' : statusText.toUpperCase()}
                             </div>
                             ${tooltipContent}
                             <div class="action-buttons mt-2">
@@ -434,6 +452,13 @@ function loadComputers(labNumber) {
                                 `<button class="btn btn-sm btn-success mark-vacant-btn" onclick="markComputerVacant(event, '${labNumber}', ${computer.number})">
                                     <i class="fas fa-check-circle"></i> Mark as Vacant
                                 </button>` : ''}
+                                ${statusText !== 'maintenance' ? 
+                                `<button class="btn btn-sm btn-secondary mt-1" onclick="markComputerMaintenance(event, '${labNumber}', ${computer.number})">
+                                    <i class="fas fa-tools"></i> On Maintenance
+                                </button>` : 
+                                `<button class="btn btn-sm btn-success mt-1" onclick="markComputerVacant(event, '${labNumber}', ${computer.number})">
+                                    <i class="fas fa-check-circle"></i> End Maintenance
+                                </button>`}
                             </div>
                         </div>
                     `;
@@ -556,6 +581,37 @@ function markComputerVacant(event, roomNumber, computerNumber) {
         });
 }
 
+// Function to mark a computer as being on maintenance
+function markComputerMaintenance(event, roomNumber, computerNumber) {
+    // Stop the event from bubbling up to the computer card
+    event.stopPropagation();
+    
+    console.log(`Marking PC ${computerNumber} as on maintenance...`);
+    
+    if (!confirm(`Are you sure you want to mark PC ${computerNumber} as on maintenance?`)) {
+        return;
+    }
+    
+    console.log(`Confirmed maintenance for PC ${computerNumber}, sending request...`);
+    
+    updateComputerStatus(roomNumber, computerNumber, 'maintenance')
+        .then(response => {
+            console.log('Server response:', response);
+            if (response.success) {
+                // Refresh the computer display
+                console.log('Maintenance status updated successfully, refreshing display...');
+                loadComputers(roomNumber);
+            } else {
+                console.error('Error response from server:', response);
+                alert('Error: ' + (response.error || 'Failed to update computer status'));
+            }
+        })
+        .catch(error => {
+            console.error('Error marking computer as maintenance:', error);
+            alert('Error marking computer as maintenance');
+        });
+}
+
 // Function to mark all computers in a lab with a specific status
 function markAllComputers(roomNumber, status) {
     const actionName = status === 'occupied' ? 'occupied (class mode)' : 'vacant';
@@ -646,6 +702,8 @@ function markAllComputers(roomNumber, status) {
 
 // Helper function to make the actual API call to update computer status
 function updateComputerStatus(roomNumber, computerNumber, status) {
+    console.log(`Updating PC ${computerNumber} in room ${roomNumber} to status: ${status}`);
+    
     return fetch('/toggle_computer_status', {
         method: 'POST',
         headers: {
@@ -657,11 +715,29 @@ function updateComputerStatus(roomNumber, computerNumber, status) {
             status: status
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Response data:', data);
+        return data;
+    })
     .catch(error => {
         console.error('Error updating computer status:', error);
         return { success: false, error: 'Network error' };
     });
+}
+
+// Add this function to handle manual refresh
+function refreshComputers() {
+    const labSelect = document.getElementById('labSelect');
+    if (labSelect.value) {
+        console.log('Manually refreshing computers for lab:', labSelect.value);
+        loadComputers(labSelect.value);
+    } else {
+        alert('Please select a lab first');
+    }
 }
 </script>
 {% endblock %} 

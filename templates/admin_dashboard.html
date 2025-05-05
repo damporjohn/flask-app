@@ -357,12 +357,8 @@
                                 <small class="ms-1">Occupied</small>
                             </div>
                             <div class="mx-2 d-flex align-items-center">
-                                <span class="badge bg-warning" style="width: 15px; height: 15px; display: inline-block;"></span>
-                                <small class="ms-1">Reserved</small>
-                            </div>
-                            <div class="mx-2 d-flex align-items-center">
-                                <span class="badge bg-secondary" style="width: 15px; height: 15px; display: inline-block;"></span>
-                                <small class="ms-1">In Class</small>
+                                <span class="badge bg-gray" style="width: 15px; height: 15px; display: inline-block; background-color: gray;"></span>
+                                <small class="ms-1">On Maintenance</small>
                             </div>
                         </div>
                     </div>
@@ -1107,6 +1103,9 @@ function loadComputersForLab(labNumber) {
                 } else if (computer.status === 'in_class') {
                     btnClass = 'btn-secondary';
                     isDisabled = true;
+                } else if (computer.status === 'maintenance') {
+                    btnClass = 'btn-dark';
+                    isDisabled = true;
                 }
                 
                 const button = document.createElement('button');
@@ -1128,6 +1127,11 @@ function loadComputersForLab(labNumber) {
                     badge.style.fontSize = '8px';
                     badge.innerHTML = getInitials(computer.student.name);
                     button.appendChild(badge);
+                } else if (computer.status === 'maintenance') {
+                    // Add "On Maintenance" tooltip
+                    button.setAttribute('data-bs-toggle', 'tooltip');
+                    button.setAttribute('data-bs-placement', 'top');
+                    button.setAttribute('title', 'On Maintenance');
                 }
                 
                 button.onclick = () => selectComputer(computer.number);

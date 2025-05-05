@@ -277,7 +277,8 @@ function approveReservation(reservationId) {
     .then(data => {
         if (data.success) {
             alert('Reservation approved successfully');
-            loadReservations();
+            // Automatically activate sit-in after approval
+            activateSession(reservationId);
         } else {
             alert('Error: ' + data.error);
         }

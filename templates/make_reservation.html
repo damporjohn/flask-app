@@ -280,40 +280,43 @@
     }
 
     .computer-btn {
-        width: 100%;
-        padding: 1rem;
-        margin: 0.25rem;
-        border: none;
-        border-radius: 8px;
-        font-weight: 500;
-        transition: all 0.2s ease;
-        position: relative;
-        overflow: hidden;
-        cursor: pointer;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        min-height: 80px;
+        width: 100%;
+        height: 90px;
+        margin-bottom: 15px;
+        border: none;
+        color: var(--text-light);
+        background: var(--gunmetal-3);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
     }
-
+    
     .computer-btn.vacant {
-        background: rgba(76, 175, 80, 0.2);
-        color: var(--success);
-        border: 1px solid rgba(76, 175, 80, 0.3);
+        background-image: linear-gradient(to bottom right, rgba(76, 175, 80, 0.25), rgba(76, 175, 80, 0.1));
+        border: 1px solid rgba(76, 175, 80, 0.4);
+        cursor: pointer;
     }
-
-    .computer-btn.vacant:hover {
-        background: rgba(76, 175, 80, 0.3);
-        transform: translateY(-2px);
-    }
-
+    
+    .computer-btn.occupied, 
+    .computer-btn.reserved, 
     .computer-btn.pending,
-    .computer-btn.approved,
-    .computer-btn.sit-in {
-        background: rgba(0, 0, 0, 0.2);
-        color: var(--text-muted);
-        border: 1px solid var(--border-color);
+    .computer-btn.in_class {
+        background-image: linear-gradient(to bottom right, rgba(244, 67, 54, 0.25), rgba(244, 67, 54, 0.1));
+        border: 1px solid rgba(244, 67, 54, 0.4);
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .computer-btn.maintenance {
+        background-image: linear-gradient(to bottom right, rgba(97, 97, 97, 0.25), rgba(97, 97, 97, 0.1));
+        border: 1px solid rgba(97, 97, 97, 0.4);
+        opacity: 0.6;
         cursor: not-allowed;
     }
 
@@ -344,6 +347,179 @@
         font-size: 0.8rem;
         color: var(--text-muted);
         text-align: center;
+    }
+
+    .status-legend {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: var(--gunmetal-3);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+
+    .status-legend .d-flex {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .status-legend .mx-2 {
+        margin-right: 1rem;
+    }
+
+    .status-legend .d-flex .align-items-center {
+        display: flex;
+        align-items: center;
+    }
+
+    .status-legend .d-flex .align-items-center span {
+        width: 15px;
+        height: 15px;
+        display: inline-block;
+        border-radius: 3px;
+        margin-right: 0.5rem;
+    }
+
+    .status-legend .d-flex .align-items-center small {
+        margin-left: 0.5rem;
+    }
+
+    /* Enhanced Lab Schedule Styles */
+    .lab-schedule {
+        margin-top: 1rem;
+        background: var(--gunmetal-3);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        overflow: hidden;
+    }
+    
+    .schedule-header {
+        background: var(--gunmetal-2);
+        padding: 12px 15px;
+        font-weight: 500;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .schedule-body {
+        padding: 0;
+    }
+    
+    .time-slot {
+        display: flex;
+        align-items: center;
+        padding: 10px 15px;
+        border-bottom: 1px solid var(--border-color);
+        transition: all 0.2s ease;
+    }
+    
+    .time-slot:last-child {
+        border-bottom: none;
+    }
+    
+    .time-slot.vacant {
+        background-image: linear-gradient(to right, rgba(76, 175, 80, 0.1), transparent);
+        border-left: 3px solid var(--success);
+        cursor: pointer;
+    }
+    
+    .time-slot.vacant:hover {
+        background-image: linear-gradient(to right, rgba(76, 175, 80, 0.2), transparent);
+    }
+    
+    .time-slot.occupied {
+        background-image: linear-gradient(to right, rgba(244, 67, 54, 0.1), transparent);
+        border-left: 3px solid var(--danger);
+        opacity: 0.7;
+    }
+    
+    .time-slot.selected {
+        background-color: rgba(77, 182, 172, 0.3);
+        box-shadow: inset 0 0 0 1px var(--accent);
+    }
+    
+    .time-label {
+        width: 100px;
+        font-weight: 500;
+    }
+    
+    .time-status {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+    }
+    
+    .time-status i {
+        margin-right: 6px;
+    }
+    
+    .time-status.vacant {
+        color: var(--success);
+    }
+    
+    .time-status.occupied {
+        color: var(--danger);
+    }
+    
+    .class-schedule-bar {
+        background: rgba(255, 152, 0, 0.15);
+        border-left: 3px solid var(--warning);
+        margin-bottom: 10px;
+        border-radius: 4px;
+        padding: 8px 12px;
+        font-size: 0.9rem;
+    }
+    
+    .class-schedule-time {
+        font-weight: 500;
+        color: var(--warning);
+    }
+    
+    .class-schedule-subject {
+        margin-left: 10px;
+        color: var(--text-light);
+    }
+    
+    .class-schedule-instructor {
+        font-size: 0.8rem;
+        margin-top: 4px;
+        color: var(--text-muted);
+    }
+    
+    .schedule-legend {
+        display: flex;
+        flex-wrap: wrap;
+        margin-top: 10px;
+        padding: 10px;
+        background: rgba(0,0,0,0.1);
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        margin-right: 15px;
+        margin-bottom: 5px;
+    }
+    
+    .legend-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+        margin-right: 5px;
+    }
+    
+    .legend-available {
+        background: var(--success);
+    }
+    
+    .legend-scheduled {
+        background: var(--warning);
+    }
+    
+    .legend-unavailable {
+        background: var(--danger);
     }
 </style>
 
@@ -406,8 +582,12 @@
                     </select>
                 </div>
                 <div class="form-group">
+                    <label for="date" class="form-label">Date</label>
+                    <input type="date" class="form-control" id="date" name="date" required onchange="updateFormState()">
+                </div>
+                <div class="form-group">
                     <label for="room" class="form-label">Room</label>
-                    <select class="form-control" id="room" name="room" required onchange="loadComputers(this.value)">
+                    <select class="form-control" id="room" name="room" required onchange="updateFormState()">
                         <option value="">Select Room</option>
                         {% for lab in labs %}
                             <option value="{{ lab.roomNumber }}">Room {{ lab.roomNumber }}</option>
@@ -420,16 +600,51 @@
                         <div id="computerButtons" class="row g-2">
                             <!-- Computer buttons will be loaded here -->
                         </div>
+                        <div class="status-legend mt-3">
+                            <div class="d-flex justify-content-start flex-wrap">
+                                <div class="mx-2 d-flex align-items-center">
+                                    <span style="width: 15px; height: 15px; display: inline-block; background: rgba(76, 175, 80, 0.25); border: 1px solid rgba(76, 175, 80, 0.4); border-radius: 3px;"></span>
+                                    <small class="ms-1">Vacant</small>
+                                </div>
+                                <div class="mx-2 d-flex align-items-center">
+                                    <span style="width: 15px; height: 15px; display: inline-block; background: rgba(244, 67, 54, 0.25); border: 1px solid rgba(244, 67, 54, 0.4); border-radius: 3px;"></span>
+                                    <small class="ms-1">Occupied/Reserved</small>
+                                </div>
+                                <div class="mx-2 d-flex align-items-center">
+                                    <span style="width: 15px; height: 15px; display: inline-block; background: rgba(97, 97, 97, 0.25); border: 1px solid rgba(97, 97, 97, 0.4); border-radius: 3px;"></span>
+                                    <small class="ms-1">On Maintenance</small>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <input type="hidden" id="selectedComputer" name="computer_number" required>
                 </div>
-                <div class="form-group">
-                    <label for="date" class="form-label">Date</label>
-                    <input type="date" class="form-control" id="date" name="date" required>
-                </div>
-                <div class="form-group">
-                    <label for="time" class="form-label">Time</label>
-                    <input type="time" class="form-control" id="time" name="time" required>
+                <div class="form-group" id="timeGroup" style="display: none;">
+                    <label for="time" class="form-label">Lab Schedule</label>
+                    <p class="text-muted mb-2">The schedule below shows class sessions and available time slots. Click on an available (green) time slot to select it.</p>
+                    <div class="lab-schedule">
+                        <div class="schedule-header">
+                            <span id="scheduleDate">Schedule</span>
+                        </div>
+                        <div class="schedule-body" id="scheduleBody">
+                            <!-- Time slots will be loaded here -->
+                        </div>
+                    </div>
+                    <div class="schedule-legend">
+                        <div class="legend-item">
+                            <div class="legend-color legend-available"></div>
+                            <span>Available</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color legend-scheduled"></div>
+                            <span>Class Schedule</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color legend-unavailable"></div>
+                            <span>Unavailable</span>
+                        </div>
+                    </div>
+                    <input type="hidden" id="time" name="time" required>
                 </div>
                 <button type="submit" class="btn-submit">
                     <i class="fas fa-calendar-check"></i>
@@ -468,16 +683,30 @@
             const room = formData.get('room');
             const date = formData.get('date');
             const time = formData.get('time');
+            const computerNumber = formData.get('computer_number');
             
-            if (!purpose || !room || !date || !time) {
-                alert('Please fill in all fields');
+            if (!purpose || !room || !date || !time || !computerNumber) {
+                alert('Please fill in all fields and select a computer');
                 e.preventDefault();
                 return false;
             }
             
             return true;
         };
-    });    
+    });
+    
+    function updateFormState() {
+        const date = document.getElementById('date').value;
+        const room = document.getElementById('room').value;
+        
+        // If we have date and room, show computer selection
+        if (date && room) {
+            loadComputers(room);
+        } else {
+            document.getElementById('computerGroup').style.display = 'none';
+            document.getElementById('timeGroup').style.display = 'none';
+        }
+    }
 
     function loadComputers(roomNumber) {
         if (!roomNumber) {
@@ -509,6 +738,8 @@
                         let statusText = computer.status.toUpperCase();
                         if (computer.student) {
                             statusText = `${computer.student.name} (${computer.status.toUpperCase()})`;
+                        } else if (computer.status === 'maintenance') {
+                            statusText = 'ON MAINTENANCE';
                         }
                         
                         button.innerHTML = `
@@ -543,6 +774,230 @@
         });
         
         selectedComputer.value = number;
+        
+        // After selecting a computer, load available times
+        loadAvailableTimes();
+    }
+    
+    function loadAvailableTimes() {
+        const date = document.getElementById('date').value;
+        const room = document.getElementById('room').value;
+        const computerNumber = document.getElementById('selectedComputer').value;
+        
+        if (!date || !room || !computerNumber) {
+            return;
+        }
+        
+        // Show loading state
+        const timeGroup = document.getElementById('timeGroup');
+        const scheduleBody = document.getElementById('scheduleBody');
+        const timeInput = document.getElementById('time');
+        
+        scheduleBody.innerHTML = '<div class="time-slot"><div class="time-label">Loading...</div></div>';
+        timeGroup.style.display = 'block';
+        timeInput.value = '';
+        
+        // Update the schedule header
+        const selectedDate = new Date(date);
+        const formattedDate = selectedDate.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        document.getElementById('scheduleDate').textContent = `${formattedDate} - Room ${room}, PC ${computerNumber}`;
+        
+        // Convert selected date to day of week
+        const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+        
+        // Map day number to day code used in the system
+        const dayCodeMap = {
+            1: 'M',    // Monday
+            2: 'T',    // Tuesday
+            3: 'W',    // Wednesday
+            4: 'TH',   // Thursday
+            5: 'F',    // Friday
+            6: 'S'     // Saturday
+        };
+        
+        const dayCode = dayCodeMap[dayOfWeek];
+        
+        // If not a valid day (Sunday), show message
+        if (!dayCode) {
+            scheduleBody.innerHTML = '<div class="time-slot"><div class="time-label">Reservations are not available on Sundays</div></div>';
+            return;
+        }
+        
+        // Fetch laboratory schedules for this room and day
+        fetch(`/get_lab_schedules?room=${room}&day=${dayCode}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch lab schedules');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Clear the schedule body
+                scheduleBody.innerHTML = '';
+                
+                // First, display the class schedules at the top
+                if (data.schedules && data.schedules.length > 0) {
+                    const classSchedulesContainer = document.createElement('div');
+                    classSchedulesContainer.className = 'p-3';
+                    
+                    // Add a header for the class schedules
+                    const classSchedulesHeader = document.createElement('div');
+                    classSchedulesHeader.className = 'mb-2';
+                    classSchedulesHeader.innerHTML = `<strong>Scheduled Classes</strong>`;
+                    classSchedulesContainer.appendChild(classSchedulesHeader);
+                    
+                    // Sort schedules by start time
+                    data.schedules.sort((a, b) => {
+                        return a.start_time.localeCompare(b.start_time);
+                    });
+                    
+                    // Add each class schedule
+                    data.schedules.forEach(schedule => {
+                        const scheduleEl = document.createElement('div');
+                        scheduleEl.className = 'class-schedule-bar';
+                        
+                        const startTime = formatTimeDisplay(schedule.start_time);
+                        const endTime = formatTimeDisplay(schedule.end_time);
+                        
+                        scheduleEl.innerHTML = `
+                            <div>
+                                <span class="class-schedule-time">${startTime} - ${endTime}</span>
+                                <span class="class-schedule-subject">${schedule.subject || 'Class Session'}</span>
+                            </div>
+                            ${schedule.faculty ? `<div class="class-schedule-instructor">Instructor: ${schedule.faculty}</div>` : ''}
+                        `;
+                        
+                        classSchedulesContainer.appendChild(scheduleEl);
+                    });
+                    
+                    scheduleBody.appendChild(classSchedulesContainer);
+                }
+                
+                // Generate all possible time slots from 7:00 AM to 8:00 PM
+                const allTimeSlots = [];
+                for (let hour = 7; hour <= 20; hour++) {
+                    const formattedHour = hour.toString().padStart(2, '0');
+                    allTimeSlots.push(`${formattedHour}:00`);
+                }
+                
+                // Create a divider
+                const divider = document.createElement('div');
+                divider.className = 'border-top border-secondary my-2';
+                scheduleBody.appendChild(divider);
+                
+                // Add a header for the available time slots
+                const timeSlotsHeader = document.createElement('div');
+                timeSlotsHeader.className = 'px-3 pt-2 pb-1';
+                timeSlotsHeader.innerHTML = `<strong>Available Time Slots</strong>`;
+                scheduleBody.appendChild(timeSlotsHeader);
+                
+                // Create a container for the time slots
+                const timeSlotsContainer = document.createElement('div');
+                scheduleBody.appendChild(timeSlotsContainer);
+                
+                // Create a map to track which time slots are occupied by lab schedules
+                const occupiedSlots = {};
+                if (data.schedules && Array.isArray(data.schedules)) {
+                    data.schedules.forEach(schedule => {
+                        // Parse schedule start and end times
+                        const [startHours, startMinutes] = schedule.start_time.split(':').map(Number);
+                        const [endHours, endMinutes] = schedule.end_time.split(':').map(Number);
+                        
+                        // Mark all time slots that fall within this schedule as occupied
+                        allTimeSlots.forEach(timeSlot => {
+                            const [slotHours, slotMinutes] = timeSlot.split(':').map(Number);
+                            const slotTime = slotHours * 60 + slotMinutes; // Convert to minutes
+                            
+                            const scheduleStartTime = startHours * 60 + startMinutes;
+                            const scheduleEndTime = endHours * 60 + endMinutes;
+                            
+                            if (slotTime >= scheduleStartTime && slotTime < scheduleEndTime) {
+                                occupiedSlots[timeSlot] = {
+                                    occupied: true,
+                                    reason: schedule.subject || 'Class Schedule',
+                                    time: `${formatTimeDisplay(schedule.start_time)} - ${formatTimeDisplay(schedule.end_time)}`
+                                };
+                            }
+                        });
+                    });
+                }
+                
+                // Create time slot elements and add them to the time slots container
+                allTimeSlots.forEach(timeSlot => {
+                    const isOccupied = occupiedSlots[timeSlot] && occupiedSlots[timeSlot].occupied;
+                    let reason = isOccupied ? occupiedSlots[timeSlot].reason : 'Available';
+                    let timeRange = isOccupied ? occupiedSlots[timeSlot].time : '';
+                    
+                    const slotElement = document.createElement('div');
+                    slotElement.className = `time-slot ${isOccupied ? 'occupied' : 'vacant'}`;
+                    
+                    if (!isOccupied) {
+                        slotElement.onclick = () => selectTimeSlot(timeSlot, slotElement);
+                    }
+                    
+                    slotElement.innerHTML = `
+                        <div class="time-label">${formatTimeDisplay(timeSlot)}</div>
+                        <div class="time-status ${isOccupied ? 'occupied' : 'vacant'}">
+                            <i class="fas fa-${isOccupied ? 'times-circle' : 'check-circle'}"></i>
+                            ${reason} ${timeRange ? `(${timeRange})` : ''}
+                        </div>
+                    `;
+                    
+                    timeSlotsContainer.appendChild(slotElement);
+                });
+                
+                // If all slots are occupied, show a message
+                if (Object.keys(occupiedSlots).length === allTimeSlots.length) {
+                    timeSlotsContainer.innerHTML = '<div class="time-slot"><div class="time-label">No available times - Laboratory is fully scheduled</div></div>';
+                }
+                
+                // If no slots are occupied and no schedules, show all as available
+                if (Object.keys(occupiedSlots).length === 0 && (!data.schedules || data.schedules.length === 0)) {
+                    // Remove the "Scheduled Classes" section
+                    scheduleBody.innerHTML = '';
+                    
+                    // Add a message that all times are available
+                    const allAvailableMsg = document.createElement('div');
+                    allAvailableMsg.className = 'p-3 text-success';
+                    allAvailableMsg.innerHTML = '<i class="fas fa-info-circle mr-2"></i> No classes scheduled for this day. All time slots are available.';
+                    scheduleBody.appendChild(allAvailableMsg);
+                    
+                    // Re-add the time slots header and container
+                    scheduleBody.appendChild(document.createElement('hr'));
+                    scheduleBody.appendChild(timeSlotsHeader);
+                    scheduleBody.appendChild(timeSlotsContainer);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading lab schedule:', error);
+                scheduleBody.innerHTML = `<div class="time-slot"><div class="time-label">Error loading schedule: ${error.message}</div></div>`;
+            });
+    }
+    
+    function selectTimeSlot(timeSlot, element) {
+        // Remove selected class from all time slots
+        document.querySelectorAll('.time-slot.selected').forEach(slot => {
+            slot.classList.remove('selected');
+        });
+        
+        // Add selected class to the clicked time slot
+        element.classList.add('selected');
+        
+        // Update the hidden input value
+        document.getElementById('time').value = timeSlot;
+    }
+    
+    function formatTimeDisplay(timeSlot) {
+        // Convert 24-hour format to more user-friendly display
+        const [hours, minutes] = timeSlot.split(':').map(Number);
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours % 12 || 12; // Convert 0 to 12 for 12 AM
+        return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
     }
 
     document.getElementById('reservationForm').addEventListener('submit', function(e) {

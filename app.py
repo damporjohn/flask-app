@@ -1321,7 +1321,7 @@ def sit_in_reports():
         conn = mysql.connector.connect(**DB_CONFIG)
         cursor = conn.cursor(dictionary=True)
         
-        # Get all sit-in records with student information
+        # Get only completed sit-in records (where logout_time is not NULL)
         cursor.execute("""
             SELECT 
                 s.id,
@@ -1334,9 +1334,10 @@ def sit_in_reports():
                 s.computer_number,
                 s.login_time,
                 s.logout_time,
-                TIMEDIFF(COALESCE(s.logout_time, NOW()), s.login_time) as duration
+                TIMEDIFF(s.logout_time, s.login_time) as duration
             FROM sit_in s
             JOIN students st ON s.student_id = st.id
+            WHERE s.logout_time IS NOT NULL
             ORDER BY s.id DESC
         """)
         
@@ -2807,7 +2808,7 @@ def toggle_computer_status():
         if not all(key in data for key in ['room_number', 'computer_number', 'status']):
             return jsonify({'success': False, 'error': 'Missing required fields'}), 400
             
-        valid_statuses = ['vacant', 'pending', 'approved', 'sit-in', 'occupied']
+        valid_statuses = ['vacant', 'pending', 'approved', 'sit-in', 'occupied', 'maintenance', 'in_class']
         if data['status'] not in valid_statuses:
             return jsonify({'success': False, 'error': 'Invalid status'}), 400
             
@@ -3122,6 +3123,56 @@ def fix_computer_status():
         if cursor:
             cursor.close()
         if conn:
+            conn.close()
+
+@app.route('/get_lab_schedules', methods=['GET'])
+def get_room_day_schedules():
+    try:
+        room = request.args.get('room')
+        day = request.args.get('day')
+        
+        if not room or not day:
+            return jsonify({'error': 'Room and day parameters are required'}), 400
+        
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get schedules for the specified room and day
+        cursor.execute("""
+            SELECT * FROM lab_schedules 
+            WHERE roomNumber = %s AND days LIKE %s
+        """, (room, f'%{day}%'))
+        
+        schedules = cursor.fetchall()
+        
+        # Convert schedules to JSON-serializable format
+        schedules_list = []
+        for schedule in schedules:
+            # Convert time objects to string format for JSON serialization
+            start_time_str = schedule['start_time'].strftime('%H:%M') if hasattr(schedule['start_time'], 'strftime') else str(schedule['start_time'])
+            end_time_str = schedule['end_time'].strftime('%H:%M') if hasattr(schedule['end_time'], 'strftime') else str(schedule['end_time'])
+            
+            schedule_dict = {
+                'id': schedule['id'],
+                'roomNumber': schedule['roomNumber'],
+                'days': schedule['days'],
+                'start_time': start_time_str,
+                'end_time': end_time_str,
+                'course': schedule['course'],
+                'instructor': schedule['instructor']
+            }
+            schedules_list.append(schedule_dict)
+        
+        return jsonify({'schedules': schedules_list})
+        
+    except mysql.connector.Error as e:
+        print(f"Database error in get_room_day_schedules: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+        
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
             conn.close()
 
 if __name__ == '__main__':
