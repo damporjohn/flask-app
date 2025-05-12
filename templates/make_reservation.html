@@ -296,7 +296,7 @@
         position: relative;
         overflow: hidden;
     }
-    
+
     .computer-btn.vacant {
         background-image: linear-gradient(to bottom right, rgba(76, 175, 80, 0.25), rgba(76, 175, 80, 0.1));
         border: 1px solid rgba(76, 175, 80, 0.4);
@@ -880,8 +880,8 @@
                 
                 // Generate all possible time slots from 7:00 AM to 8:00 PM
                 const allTimeSlots = [];
-                for (let hour = 7; hour <= 20; hour++) {
-                    const formattedHour = hour.toString().padStart(2, '0');
+        for (let hour = 7; hour <= 20; hour++) {
+            const formattedHour = hour.toString().padStart(2, '0');
                     allTimeSlots.push(`${formattedHour}:00`);
                 }
                 
@@ -904,18 +904,18 @@
                 const occupiedSlots = {};
                 if (data.schedules && Array.isArray(data.schedules)) {
                     data.schedules.forEach(schedule => {
-                        // Parse schedule start and end times
-                        const [startHours, startMinutes] = schedule.start_time.split(':').map(Number);
-                        const [endHours, endMinutes] = schedule.end_time.split(':').map(Number);
+            // Parse schedule start and end times
+            const [startHours, startMinutes] = schedule.start_time.split(':').map(Number);
+            const [endHours, endMinutes] = schedule.end_time.split(':').map(Number);
                         
                         // Mark all time slots that fall within this schedule as occupied
                         allTimeSlots.forEach(timeSlot => {
                             const [slotHours, slotMinutes] = timeSlot.split(':').map(Number);
                             const slotTime = slotHours * 60 + slotMinutes; // Convert to minutes
-                            
-                            const scheduleStartTime = startHours * 60 + startMinutes;
-                            const scheduleEndTime = endHours * 60 + endMinutes;
-                            
+            
+            const scheduleStartTime = startHours * 60 + startMinutes;
+            const scheduleEndTime = endHours * 60 + endMinutes;
+            
                             if (slotTime >= scheduleStartTime && slotTime < scheduleEndTime) {
                                 occupiedSlots[timeSlot] = {
                                     occupied: true,
@@ -991,7 +991,7 @@
         // Update the hidden input value
         document.getElementById('time').value = timeSlot;
     }
-    
+
     function formatTimeDisplay(timeSlot) {
         // Convert 24-hour format to more user-friendly display
         const [hours, minutes] = timeSlot.split(':').map(Number);

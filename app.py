@@ -1,13 +1,17 @@
 import mysql.connector
-from flask import Flask, request, redirect, url_for, session, render_template, flash, jsonify, logging
+import sys
+from flask import Flask, request, redirect, url_for, session, render_template, flash, jsonify, logging, send_from_directory
 from werkzeug.security import check_password_hash, generate_password_hash
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import pymysql
 import os
 from werkzeug.utils import secure_filename
 from functools import wraps
 from flask_mysqldb import MySQL
 from dotenv import load_dotenv
+import re
+from flask_session import Session
+from notification_utils import create_reservation_notifications, create_reservation_status_notification, create_feedback_notifications
 
 registration_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -39,6 +43,104 @@ app.config['LAB_RESOURCES_FOLDER'] = LAB_RESOURCES_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(LAB_RESOURCES_FOLDER, exist_ok=True)
 
+# Helper functions for notifications
+def create_notifications_table():
+    """
+    Create the notification tables if they don't exist.
+    This function can be imported directly or called as a route.
+    """
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        
+        # Create admin notifications table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS admin_notifications (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                type VARCHAR(50) NOT NULL,
+                title VARCHAR(100) NOT NULL,
+                message TEXT NOT NULL,
+                reference_id INT,
+                is_read BOOLEAN DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Create student notifications table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS student_notifications (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                student_id INT NOT NULL,
+                type VARCHAR(50) NOT NULL,
+                title VARCHAR(100) NOT NULL,
+                message TEXT NOT NULL,
+                reference_id INT,
+                is_read BOOLEAN DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+            )
+        ''')
+        
+        conn.commit()
+        return "Notification tables created successfully!"
+    
+    except mysql.connector.Error as e:
+        return f"Error creating notification tables: {e}"
+    
+    finally:
+        if 'cursor' in locals() and cursor:
+            cursor.close()
+        if 'conn' in locals() and conn:
+            conn.close()
+
+def create_admin_notification(type, title, message, reference_id=None):
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO admin_notifications (type, title, message, reference_id)
+            VALUES (%s, %s, %s, %s)
+        ''', (type, title, message, reference_id))
+        
+        conn.commit()
+        notification_id = cursor.lastrowid
+        return notification_id
+    
+    except mysql.connector.Error as e:
+        print(f"Error creating admin notification: {e}")
+        return None
+    
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+def create_student_notification(student_id, type, title, message, reference_id=None):
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO student_notifications (student_id, type, title, message, reference_id)
+            VALUES (%s, %s, %s, %s, %s)
+        ''', (student_id, type, title, message, reference_id))
+        
+        conn.commit()
+        notification_id = cursor.lastrowid
+        return notification_id
+    
+    except mysql.connector.Error as e:
+        print(f"Error creating student notification: {e}")
+        return None
+    
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 def allowed_file(filename, allowed_extensions=None):
     if allowed_extensions is None:
         allowed_extensions = ['png', 'jpg', 'jpeg']
@@ -52,6 +154,11 @@ def login_required(f):
             return redirect(url_for('login_dashboard'))
         return f(*args, **kwargs)
     return decorated_function
+
+# Create a route that calls the create_notifications_table function
+@app.route('/create_notifications_table')
+def create_notifications_table_route():
+    return create_notifications_table()
 
 #Index route
 @app.route('/', methods=['GET', 'POST'])
@@ -600,6 +707,19 @@ def make_reservation():
                     VALUES (%s, %s, %s, %s, %s, %s, 'pending', NOW(), 0)
                 """, (student['id'], room_number, request.form.get('computer_number'), purpose, date, time))
                 
+                # Get the reservation ID
+                reservation_id = cursor.lastrowid
+                
+                # Create notifications for both admin and student
+                create_reservation_notifications(
+                    reservation_id, 
+                    student['id'], 
+                    f"{student['firstname']} {student['lastname']}", 
+                    room_number, 
+                    date, 
+                    time
+                )
+                
                 conn.commit()
                 flash("Reservation request sent successfully!", "success")
                 return redirect(url_for('student_dashboard'))
@@ -641,8 +761,10 @@ def handle_reservation(request_id, action):
 
         # First check if the reservation exists and its current status
         cursor.execute("""
-            SELECT * FROM reservation_requests 
-            WHERE id = %s
+            SELECT r.*, s.firstname, s.lastname 
+            FROM reservation_requests r
+            JOIN students s ON r.student_id = s.id
+            WHERE r.id = %s
         """, (request_id,))
         
         reservation = cursor.fetchone()
@@ -664,6 +786,11 @@ def handle_reservation(request_id, action):
                 WHERE id = %s
             """, (request_id,))
             
+            # Create student notification for approved reservation
+            notification_title = "Reservation Approved"
+            notification_message = f"Your reservation request for Lab {reservation['room_number']} on {reservation['requested_date']} at {reservation['requested_time']} has been approved."
+            create_student_notification(reservation['student_id'], 'reservation', notification_title, notification_message, request_id)
+            
             conn.commit()
             return jsonify({'success': True, 'message': 'Reservation approved successfully'})
             
@@ -678,6 +805,11 @@ def handle_reservation(request_id, action):
                     used = 1
                 WHERE id = %s
             """, (request_id,))
+            
+            # Create student notification for rejected reservation
+            notification_title = "Reservation Rejected"
+            notification_message = f"Your reservation request for Lab {reservation['room_number']} on {reservation['requested_date']} at {reservation['requested_time']} has been rejected."
+            create_student_notification(reservation['student_id'], 'reservation', notification_title, notification_message, request_id)
             
             conn.commit()
             return jsonify({'success': True, 'message': 'Reservation rejected successfully'})
@@ -741,13 +873,27 @@ def post_announcement():
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )
         """)
-        conn.commit()
         
         # Now insert the announcement
         cursor.execute("""
             INSERT INTO announcements (title, content)
             VALUES (%s, %s)
         """, (title, content))
+        
+        announcement_id = cursor.lastrowid
+        
+        # Create notifications for all students
+        cursor.execute("SELECT id FROM students")
+        students = cursor.fetchall()
+        
+        for student in students:
+            create_student_notification(
+                student['id'], 
+                'announcement', 
+                "New Announcement", 
+                f"{title}", 
+                announcement_id
+            )
         
         conn.commit()
         return jsonify({'success': True})
@@ -2096,12 +2242,26 @@ def submit_report():
             return jsonify({'error': 'Report text, rating, and room number are required'}), 400
             
         conn = mysql.connector.connect(**DB_CONFIG)
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
         
+        # Get student name for the notification
+        cursor.execute("""
+            SELECT firstname, lastname FROM students WHERE id = %s
+        """, (session['user_id'],))
+        student = cursor.fetchone()
+        
+        # Insert the report
         cursor.execute("""
             INSERT INTO reports (student_id, report_text, rating, room_number)
             VALUES (%s, %s, %s, %s)
         """, (session['user_id'], report_text, rating, room_number))
+        
+        report_id = cursor.lastrowid
+        
+        # Create admin notification for the new feedback report
+        notification_title = "New Feedback Report"
+        notification_message = f"Student {student['firstname']} {student['lastname']} has submitted a feedback report for Lab {room_number} with a rating of {rating}/5."
+        create_admin_notification('feedback', notification_title, notification_message, report_id)
         
         conn.commit()
         return jsonify({'success': True, 'message': 'Report submitted successfully'})
@@ -2172,33 +2332,6 @@ def registered_students():
     except Exception as e:
         print(f"Error fetching students: {e}")
         return "Error fetching student data", 500
-
-@app.route('/test_upload', methods=['GET', 'POST'])
-def test_upload():
-    if request.method == 'POST':
-        if 'photo' not in request.files:
-            return 'No file part'
-        
-        photo = request.files['photo']
-        if photo.filename == '':
-            return 'No selected file'
-        
-        if photo and allowed_file(photo.filename):
-            filename = secure_filename(photo.filename)
-            save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-            photo.save(save_path)
-            return f'File uploaded successfully to {save_path}'
-    
-    return '''
-    <!doctype html>
-    <title>Test Upload</title>
-    <h1>Test File Upload</h1>
-    <form method=post enctype=multipart/form-data>
-      <input type=file name=photo>
-      <input type=submit value=Upload>
-    </form>
-    '''
 
 @app.route('/award_points', methods=['POST'])
 def award_points():
@@ -2390,6 +2523,13 @@ def mark_report_read():
             WHERE id = %s
         """, (report_id,))
         
+        # Also mark corresponding admin notification as read
+        cursor.execute("""
+            UPDATE admin_notifications 
+            SET is_read = 1 
+            WHERE type = 'feedback' AND reference_id = %s
+        """, (report_id,))
+        
         conn.commit()
         return jsonify({'success': True, 'message': 'Report marked as read'})
         
@@ -2448,15 +2588,33 @@ def add_lab_resource():
         
         # Save to database
         conn = mysql.connector.connect(**DB_CONFIG)
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
         
         cursor.execute("""
             INSERT INTO lab_resources (title, resource, description, status)
             VALUES (%s, %s, %s, 'active')
         """, (title, resource_url, description))
         
+        # Get the resource ID
+        resource_id = cursor.lastrowid
+        
+        # Get all students to notify them
+        cursor.execute("SELECT id FROM students")
+        students = cursor.fetchall()
+        
+        # Create notification for each student
+        notification_title = "New Learning Resource Available"
+        notification_message = f"A new learning resource has been added: {title}"
+        
+        for student in students:
+            cursor.execute("""
+                INSERT INTO student_notifications 
+                (student_id, type, title, message, reference_id, is_read, created_at) 
+                VALUES (%s, %s, %s, %s, %s, %s, NOW())
+            """, (student['id'], 'resource', notification_title, notification_message, resource_id, 0))
+        
         conn.commit()
-        return jsonify({'success': True, 'message': 'Resource added successfully'})
+        return jsonify({'success': True, 'message': 'Resource added successfully and students notified'})
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -3175,13 +3333,428 @@ def get_room_day_schedules():
         if 'conn' in locals():
             conn.close()
 
-if __name__ == '__main__':
-    import signal
-    import sys
+@app.route('/admin/notification_count')
+@login_required
+def admin_notification_count():
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
     
-    # Register signal handlers
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("SELECT COUNT(*) as count FROM admin_notifications WHERE is_read = 0")
+        result = cursor.fetchone()
+        
+        return jsonify({'count': result['count'] if result else 0})
     
-    # Run the application with threaded=False to avoid threading issues
-    app.run(debug=True, port=3306, threaded=False)
+    except mysql.connector.Error as e:
+        return jsonify({'error': str(e)}), 500
+    
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/admin/notifications')
+@login_required
+def admin_notifications():
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute('''
+            SELECT * FROM admin_notifications 
+            ORDER BY created_at DESC
+            LIMIT 50
+        ''')
+        notifications = cursor.fetchall()
+        
+        # Convert datetime objects to strings for JSON serialization
+        for notification in notifications:
+            if notification['created_at']:
+                notification['created_at'] = notification['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+        
+        return jsonify({'notifications': notifications})
+    
+    except mysql.connector.Error as e:
+        return jsonify({'error': str(e)}), 500
+    
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/admin/mark_notification_read/<int:notification_id>', methods=['POST'])
+@login_required
+def admin_mark_notification_read(notification_id):
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        
+        cursor.execute("UPDATE admin_notifications SET is_read = 1 WHERE id = %s", (notification_id,))
+        conn.commit()
+        
+        return jsonify({'success': True})
+    
+    except mysql.connector.Error as e:
+        return jsonify({'error': str(e)}), 500
+    
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/admin/mark_all_notifications_read', methods=['POST'])
+@login_required
+def admin_mark_all_notifications_read():
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        
+        cursor.execute("UPDATE admin_notifications SET is_read = 1")
+        conn.commit()
+        
+        return jsonify({'success': True})
+    
+    except mysql.connector.Error as e:
+        return jsonify({'error': str(e)}), 500
+    
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/student/notification_count')
+@login_required
+def student_notification_count():
+    if session.get('role') != 'student':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    student_id = session.get('user_id')
+    
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute('''
+            SELECT COUNT(*) as count 
+            FROM student_notifications 
+            WHERE student_id = %s AND is_read = 0
+        ''', (student_id,))
+        result = cursor.fetchone()
+        
+        return jsonify({'count': result['count'] if result else 0})
+    
+    except mysql.connector.Error as e:
+        return jsonify({'error': str(e)}), 500
+    
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/student/notifications')
+@login_required
+def student_notifications():
+    if session.get('role') != 'student':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    student_id = session.get('user_id')
+    
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute('''
+            SELECT * FROM student_notifications 
+            WHERE student_id = %s
+            ORDER BY created_at DESC
+            LIMIT 50
+        ''', (student_id,))
+        notifications = cursor.fetchall()
+        
+        # Convert datetime objects to strings for JSON serialization
+        for notification in notifications:
+            if notification['created_at']:
+                notification['created_at'] = notification['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+        
+        return jsonify({'notifications': notifications})
+    
+    except mysql.connector.Error as e:
+        return jsonify({'error': str(e)}), 500
+    
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/student/mark_notification_read/<int:notification_id>', methods=['POST'])
+@login_required
+def student_mark_notification_read(notification_id):
+    if session.get('role') != 'student':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    student_id = session.get('user_id')
+    
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        
+        # Verify this notification belongs to the current student
+        cursor.execute('''
+            SELECT id FROM student_notifications 
+            WHERE id = %s AND student_id = %s
+        ''', (notification_id, student_id))
+        
+        if not cursor.fetchone():
+            return jsonify({'error': 'Notification not found'}), 404
+        
+        cursor.execute("UPDATE student_notifications SET is_read = 1 WHERE id = %s", (notification_id,))
+        conn.commit()
+        
+        return jsonify({'success': True})
+    
+    except mysql.connector.Error as e:
+        return jsonify({'error': str(e)}), 500
+    
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/student/mark_all_notifications_read', methods=['POST'])
+@login_required
+def student_mark_all_notifications_read():
+    if session.get('role') != 'student':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    student_id = session.get('user_id')
+    
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        
+        cursor.execute("UPDATE student_notifications SET is_read = 1 WHERE student_id = %s", (student_id,))
+        conn.commit()
+        
+        return jsonify({'success': True})
+    
+    except mysql.connector.Error as e:
+        return jsonify({'error': str(e)}), 500
+    
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/check_pending_reservations')
+def check_pending_reservations():
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        # Find reservation requests that don't have notifications yet
+        cursor.execute("""
+            SELECT r.*, s.firstname, s.lastname 
+            FROM reservation_requests r
+            JOIN students s ON r.student_id = s.id
+            LEFT JOIN admin_notifications n ON 
+                n.reference_id = r.id AND 
+                n.type = 'reservation'
+            WHERE r.status = 'pending' AND n.id IS NULL
+        """)
+        
+        new_reservations = cursor.fetchall()
+        notification_count = 0
+        
+        for reservation in new_reservations:
+            # Create admin notification for each new reservation
+            notification_title = "New Reservation Request"
+            notification_message = f"Student {reservation['firstname']} {reservation['lastname']} has requested a reservation for Lab {reservation['room_number']} on {reservation['requested_date']} at {reservation['requested_time']} for {reservation['purpose']}."
+            create_admin_notification('reservation', notification_title, notification_message, reservation['id'])
+            notification_count += 1
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Created {notification_count} new reservation notifications'
+        })
+        
+    except mysql.connector.Error as e:
+        print(f"Error checking pending reservations: {e}")
+        return jsonify({'error': str(e)}), 500
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/check_unread_reports')
+def check_unread_reports():
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        # Find unread reports that don't have notifications yet
+        cursor.execute("""
+            SELECT r.*, s.firstname, s.lastname 
+            FROM reports r
+            JOIN students s ON r.student_id = s.id
+            LEFT JOIN admin_notifications n ON 
+                n.reference_id = r.id AND 
+                n.type = 'feedback'
+            WHERE r.status = 'unread' AND n.id IS NULL
+        """)
+        
+        new_reports = cursor.fetchall()
+        notification_count = 0
+        
+        for report in new_reports:
+            # Create admin notification for each new report
+            notification_title = "New Feedback Report"
+            notification_message = f"Student {report['firstname']} {report['lastname']} has submitted a feedback report for Lab {report['room_number']} with a rating of {report['rating']}/5."
+            create_admin_notification('feedback', notification_title, notification_message, report['id'])
+            notification_count += 1
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Created {notification_count} new feedback report notifications'
+        })
+        
+    except mysql.connector.Error as e:
+        print(f"Error checking unread reports: {e}")
+        return jsonify({'error': str(e)}), 500
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/check_all_notifications')
+def check_all_notifications():
+    try:
+        # First check pending reservations
+        reservation_response = check_pending_reservations()
+        reservation_data = reservation_response.get_json()
+        
+        # Then check unread reports
+        report_response = check_unread_reports()
+        report_data = report_response.get_json()
+        
+        # Return combined results
+        total_count = 0
+        if reservation_data.get('success'):
+            count_str = reservation_data.get('message', '').split('Created ')[1].split(' new')[0]
+            total_count += int(count_str) if count_str.isdigit() else 0
+        
+        if report_data.get('success'):
+            count_str = report_data.get('message', '').split('Created ')[1].split(' new')[0]
+            total_count += int(count_str) if count_str.isdigit() else 0
+        
+        return jsonify({
+            'success': True,
+            'message': f'Created {total_count} total notifications',
+            'reservations': reservation_data.get('message'),
+            'reports': report_data.get('message')
+        })
+        
+    except Exception as e:
+        print(f"Error checking all notifications: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/end_sit_in_session_with_points/<int:sitInId>', methods=['POST'])
+def end_sit_in_session_with_points(sitInId):
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get the sit-in details before ending it
+        cursor.execute("""
+            SELECT s.id, s.student_id, s.room_number, s.computer_number, s.login_time, s.purpose,
+                   st.firstname, st.lastname
+            FROM sit_in s
+            JOIN students st ON s.student_id = st.id
+            WHERE s.id = %s AND s.logout_time IS NULL
+        """, (sitInId,))
+        sit_in = cursor.fetchone()
+        
+        if not sit_in:
+            return jsonify({'error': 'Sit-in session not found or already ended'}), 404
+        
+        # End the sit-in session
+        cursor.execute("""
+            UPDATE sit_in 
+            SET logout_time = NOW() 
+            WHERE id = %s
+        """, (sitInId,))
+        
+        # Update computer status to vacant
+        cursor.execute("""
+            INSERT INTO computer_status 
+            (room_number, computer_number, status) 
+            VALUES (%s, %s, 'vacant')
+            ON DUPLICATE KEY UPDATE status = 'vacant'
+        """, (sit_in['room_number'], sit_in['computer_number']))
+        
+        # Award a point to the student
+        # Get current points for this student
+        cursor.execute("SELECT SUM(points) as total_points FROM student_rewards WHERE student_id = %s", (sit_in['student_id'],))
+        result = cursor.fetchone()
+        current_points = result['total_points'] if result['total_points'] else 0
+        
+        # Add 1 point
+        points_to_add = 1
+        reason = "Sit-in session completion reward"
+        
+        cursor.execute("""
+            INSERT INTO student_rewards 
+            (student_id, points, reason, awarded_at) 
+            VALUES (%s, %s, %s, NOW())
+        """, (sit_in['student_id'], points_to_add, reason))
+        
+        # Calculate new total points and how many new sessions to add
+        new_total_points = current_points + points_to_add
+        new_sessions = new_total_points // 3
+        old_sessions = current_points // 3
+        sessions_to_add = new_sessions - old_sessions
+        
+        # Update remaining sessions if needed
+        if sessions_to_add > 0:
+            cursor.execute("""
+                UPDATE students
+                SET remaining_sessions = remaining_sessions + %s
+                WHERE id = %s
+            """, (sessions_to_add, sit_in['student_id']))
+        
+        # Create notification for the student
+        student_name = f"{sit_in['firstname']} {sit_in['lastname']}"
+        notification_message = f"You received 1 reward point for completing a lab session."
+        
+        cursor.execute("""
+            INSERT INTO student_notifications 
+            (student_id, type, message, is_read, created_at) 
+            VALUES (%s, %s, %s, %s, NOW())
+        """, (sit_in['student_id'], 'points', notification_message, 0))
+        
+        conn.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Sit-in session ended successfully with points',
+            'points_awarded': points_to_add,
+            'total_points': new_total_points,
+            'sessions_added': sessions_to_add
+        })
+        
+    except mysql.connector.Error as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()

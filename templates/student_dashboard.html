@@ -102,6 +102,155 @@
         transform: scale(1.05);
     }
 
+    /* Notification bell styles */
+    .notification-bell {
+        position: fixed;
+        right: 20px;
+        top: 90px;
+        z-index: 1025;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .notification-bell .btn {
+        background: var(--gunmetal-3);
+        color: var(--text-light);
+        border: none;
+        box-shadow: var(--box-shadow);
+        border-radius: 8px;
+        padding: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .notification-bell .btn:hover {
+        background: var(--gunmetal-2);
+        transform: scale(1.05);
+    }
+    
+    .notification-bell .badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background-color: var(--accent);
+        color: var(--gunmetal-5);
+        border-radius: 50%;
+        padding: 0.25rem 0.4rem;
+        font-size: 0.75rem;
+        font-weight: bold;
+    }
+    
+    .notification-dropdown {
+        position: absolute;
+        right: 0;
+        top: 100%;
+        width: 340px;
+        background: var(--gunmetal-2);
+        border-radius: 12px;
+        box-shadow: var(--box-shadow);
+        z-index: 1001;
+        overflow: hidden;
+        display: none;
+        margin-top: 10px;
+        border: 1px solid var(--border-color);
+    }
+    
+    .notification-dropdown.show {
+        display: block;
+    }
+    
+    .notification-header {
+        background: var(--gunmetal-3);
+        padding: 15px;
+        border-bottom: 1px solid var(--border-color);
+        font-weight: bold;
+        color: var(--accent);
+    }
+    
+    .notification-body {
+        max-height: 350px;
+        overflow-y: auto;
+    }
+    
+    .notification-item {
+        padding: 15px;
+        border-bottom: 1px solid var(--border-color);
+        transition: background-color 0.2s;
+        display: flex;
+        align-items: flex-start;
+        cursor: pointer;
+    }
+    
+    .notification-item:hover {
+        background-color: var(--gunmetal-3);
+    }
+    
+    .notification-icon {
+        margin-right: 15px;
+        background: rgba(255,255,255,0.05);
+        padding: 8px;
+        border-radius: 50%;
+        color: var(--text-light);
+    }
+    
+    .notification-item.reservation .notification-icon {
+        background: rgba(0, 119, 189, 0.2);
+        color: var(--primary);
+    }
+    
+    .notification-item.announcement .notification-icon {
+        background: rgba(255, 152, 0, 0.2);
+        color: var(--warning);
+    }
+    
+    .notification-item.points .notification-icon {
+        background: rgba(76, 175, 80, 0.2);
+        color: var(--success);
+    }
+    
+    .notification-item.resource .notification-icon {
+        background: rgba(33, 150, 243, 0.2);
+        color: #2196f3; /* Blue color for resource notifications */
+    }
+    
+    .notification-content {
+        flex: 1;
+    }
+    
+    .notification-title {
+        font-weight: bold;
+        margin-bottom: 5px;
+        color: var(--text-light);
+    }
+    
+    .notification-text {
+        color: var(--text-muted);
+        font-size: 0.875rem;
+        margin-bottom: 5px;
+    }
+    
+    .notification-time {
+        color: rgba(255,255,255,0.3);
+        font-size: 0.75rem;
+    }
+    
+    .notification-footer {
+        padding: 10px 15px;
+        background: var(--gunmetal-3);
+        text-align: center;
+        border-top: 1px solid var(--border-color);
+    }
+    
+    .notification-footer a {
+        color: var(--accent);
+        text-decoration: none;
+    }
+    
+    .notification-footer a:hover {
+        text-decoration: underline;
+    }
+
     .student-info-card {
         background: linear-gradient(135deg, var(--gunmetal-1), var(--gunmetal-3));
         color: var(--text-light);
@@ -523,9 +672,28 @@
 </style>
 
 <!-- Hamburger Button -->
-<button class="hamburger-btn" onclick="toggleSidebar()">
+<button class="hamburger-btn" id="toggleSidebar">
     <i class="fas fa-bars"></i>
 </button>
+
+<!-- Notification Bell -->
+<div class="notification-bell">
+    <button class="btn" id="notificationBtn">
+        <i class="fas fa-bell"></i>
+        <span class="badge" id="notificationBadge">0</span>
+    </button>
+    <div class="notification-dropdown" id="notificationDropdown">
+        <div class="notification-header">
+            Notifications
+        </div>
+        <div class="notification-body" id="notificationList">
+            <!-- Notifications will be loaded here -->
+        </div>
+        <div class="notification-footer">
+            <a href="#" id="markAllRead">Mark all as read</a>
+        </div>
+    </div>
+</div>
 
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
@@ -896,5 +1064,202 @@
     document.addEventListener('DOMContentLoaded', function() {
         updateDashboardStats();
     });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Toggle sidebar
+        const toggleBtn = document.getElementById('toggleSidebar');
+        const sidebar = document.getElementById('sidebar');
+
+        toggleBtn.addEventListener('click', function() {
+            sidebar.classList.toggle('active');
+        });
+
+        // Initialize notification system
+        initNotificationSystem();
+
+        // Other initialization code...
+    });
+
+    function initNotificationSystem() {
+        const notificationBtn = document.getElementById('notificationBtn');
+        const notificationDropdown = document.getElementById('notificationDropdown');
+        const markAllReadBtn = document.getElementById('markAllRead');
+        
+        // Toggle dropdown when clicking the bell
+        notificationBtn.addEventListener('click', function() {
+            notificationDropdown.classList.toggle('show');
+            // Load notifications when opening dropdown
+            if(notificationDropdown.classList.contains('show')) {
+                loadNotifications();
+            }
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!notificationBtn.contains(event.target) && !notificationDropdown.contains(event.target)) {
+                notificationDropdown.classList.remove('show');
+            }
+        });
+        
+        // Mark all as read button
+        markAllReadBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            markAllNotificationsAsRead();
+        });
+        
+        // Initial notification count check
+        checkNotificationCount();
+        
+        // Check for new notifications periodically
+        setInterval(checkNotificationCount, 60000); // Check every minute
+    }
+
+    function checkNotificationCount() {
+        fetch('/student/notification_count')
+            .then(response => response.json())
+            .then(data => {
+                const badge = document.getElementById('notificationBadge');
+                badge.textContent = data.count;
+                
+                if (data.count > 0) {
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error checking notifications:', error);
+            });
+    }
+
+    function loadNotifications() {
+        fetch('/student/notifications')
+            .then(response => response.json())
+            .then(data => {
+                const notificationList = document.getElementById('notificationList');
+                
+                if (data.notifications && data.notifications.length > 0) {
+                    let html = '';
+                    
+                    data.notifications.forEach(notification => {
+                        let iconClass = 'fas fa-bell';
+                        let itemClass = 'notification-item';
+                        
+                        if (notification.type === 'reservation') {
+                            iconClass = 'fas fa-calendar-check';
+                            itemClass += ' reservation';
+                        } else if (notification.type === 'announcement') {
+                            iconClass = 'fas fa-bullhorn';
+                            itemClass += ' announcement';
+                        } else if (notification.type === 'points') {
+                            iconClass = 'fas fa-award';
+                            itemClass += ' points';
+                        } else if (notification.type === 'resource') {
+                            iconClass = 'fas fa-book';
+                            itemClass += ' resource';
+                        }
+                        
+                        const timeAgo = formatTimeAgo(new Date(notification.created_at));
+                        
+                        html += `
+                            <div class="${itemClass}" data-id="${notification.id}" onclick="viewNotification(${notification.id}, '${notification.type}')">
+                                <div class="notification-icon">
+                                    <i class="${iconClass}"></i>
+                                </div>
+                                <div class="notification-content">
+                                    <div class="notification-title">${notification.title}</div>
+                                    <div class="notification-text">${notification.message}</div>
+                                    <div class="notification-time">${timeAgo}</div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    notificationList.innerHTML = html;
+                } else {
+                    notificationList.innerHTML = '<div class="p-3 text-center text-muted">No new notifications</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading notifications:', error);
+                document.getElementById('notificationList').innerHTML = 
+                    '<div class="p-3 text-center text-muted">Error loading notifications</div>';
+            });
+    }
+
+    function viewNotification(id, type) {
+        // Mark notification as read
+        fetch(`/student/mark_notification_read/${id}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Redirect based on notification type
+                if (type === 'reservation') {
+                    window.location.href = '/student/reservations';
+                } else if (type === 'announcement') {
+                    window.location.href = '/student/dashboard#announcements';
+                    // Scroll to announcements section
+                    setTimeout(() => {
+                        document.querySelector('.announcements-card').scrollIntoView({ behavior: 'smooth' });
+                    }, 300);
+                } else if (type === 'points') {
+                    window.location.href = '/student/rewards';
+                } else if (type === 'resource') {
+                    window.location.href = '/student_lab_resources&materials';
+                }
+            }
+        })
+        .catch(error => console.error('Error marking notification as read:', error));
+    }
+
+    function markAllNotificationsAsRead() {
+        fetch('/student/mark_all_notifications_read', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('notificationBadge').textContent = '0';
+                document.getElementById('notificationBadge').style.display = 'none';
+                document.getElementById('notificationList').innerHTML = 
+                    '<div class="p-3 text-center text-muted">No new notifications</div>';
+            }
+        })
+        .catch(error => console.error('Error marking all notifications as read:', error));
+    }
+
+    function formatTimeAgo(date) {
+        const now = new Date();
+        const diffInSeconds = Math.floor((now - date) / 1000);
+        
+        if (diffInSeconds < 60) {
+            return 'Just now';
+        }
+        
+        const diffInMinutes = Math.floor(diffInSeconds / 60);
+        if (diffInMinutes < 60) {
+            return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
+        }
+        
+        const diffInHours = Math.floor(diffInMinutes / 60);
+        if (diffInHours < 24) {
+            return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+        }
+        
+        const diffInDays = Math.floor(diffInHours / 24);
+        if (diffInDays < 30) {
+            return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+        }
+        
+        const diffInMonths = Math.floor(diffInDays / 30);
+        if (diffInMonths < 12) {
+            return `${diffInMonths} month${diffInMonths > 1 ? 's' : ''} ago`;
+        }
+        
+        const diffInYears = Math.floor(diffInMonths / 12);
+        return `${diffInYears} year${diffInYears > 1 ? 's' : ''} ago`;
+    }
 </script>
 {% endblock %}

@@ -76,30 +76,41 @@ function endSessionWithReward(sitInId, studentId) {
         return;
     }
 
-    // First award the point
-    fetch('/award_points', {
+    fetch(`/end_sit_in_session_with_points/${sitInId}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            student_id: studentId,
-            points: 1,
-            reason: 'Sit-in session completion reward'
-        })
+        }
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // If point was awarded successfully, end the session
-            endSession(sitInId, studentId, true);
+            // Remove the row from the table
+            const row = document.querySelector(`tr[data-sit-in-id="${sitInId}"]`);
+            if (row) {
+                row.remove();
+            }
+            
+            // Update total active count
+            const totalBadge = document.querySelector('.badge.bg-primary');
+            const currentTotal = parseInt(totalBadge.textContent.split(': ')[1]) - 1;
+            totalBadge.textContent = `Total Active: ${currentTotal}`;
+            
+            // Show success message with points info
+            alert(`Session ended successfully! Student received ${data.points_awarded} points${data.sessions_added > 0 ? ` and ${data.sessions_added} additional session(s)` : ''}.`);
+            
+            // If no more active sessions, show the "No active sessions" message
+            const tbody = document.querySelector('tbody');
+            if (tbody.children.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center">No active sessions</td></tr>';
+            }
         } else {
-            alert('Error awarding points: ' + (data.error || 'Unknown error'));
+            alert('Error: ' + (data.error || 'Failed to end session with points'));
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error awarding points');
+        alert('Error ending session with points');
     });
 }
 
@@ -129,7 +140,7 @@ function endSession(sitInId, studentId, wasRewarded = false) {
             totalBadge.textContent = `Total Active: ${currentTotal}`;
             
             // Show success message
-            alert(wasRewarded ? 'Session ended successfully with reward!' : 'Session ended successfully');
+            alert('Session ended successfully');
             
             // If no more active sessions, show the "No active sessions" message
             const tbody = document.querySelector('tbody');
